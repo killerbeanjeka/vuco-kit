@@ -1,0 +1,109 @@
+{
+  "verifiedOn": "2026-07-16",
+  "method": "fontkit 2.0.4: GSUB feature presence + digit advance-width equality under tnum",
+  "fonts": [
+    {
+      "family": "Plus Jakarta Sans",
+      "postscriptName": "PlusJakartaSans-Bold",
+      "hasTnum": true,
+      "tabularWidth": 600,
+      "unitsPerEm": 1000,
+      "digitWidths": [
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "pass": true
+    },
+    {
+      "family": "Plus Jakarta Sans ExtraBold",
+      "postscriptName": "PlusJakartaSans-ExtraBold",
+      "hasTnum": true,
+      "tabularWidth": 600,
+      "unitsPerEm": 1000,
+      "digitWidths": [
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "pass": true
+    },
+    {
+      "family": "Plus Jakarta Sans Medium",
+      "postscriptName": "PlusJakartaSans-Medium",
+      "hasTnum": true,
+      "tabularWidth": 600,
+      "unitsPerEm": 1000,
+      "digitWidths": [
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "pass": true
+    },
+    {
+      "family": "Plus Jakarta Sans",
+      "postscriptName": "PlusJakartaSans-Regular",
+      "hasTnum": true,
+      "tabularWidth": 600,
+      "unitsPerEm": 1000,
+      "digitWidths": [
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "pass": true
+    },
+    {
+      "family": "Plus Jakarta Sans SemiBold",
+      "postscriptName": "PlusJakartaSans-SemiBold",
+      "hasTnum": true,
+      "tabularWidth": 600,
+      "unitsPerEm": 1000,
+      "digitWidths": [
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600
+      ],
+      "pass": true
+    }
+  ],
+  "tnumConfirmed": true,
+  "moneyFontFamily": "Plus Jakarta Sans",
+  "moneyFontPostscript": "PlusJakartaSans-Bold"
+}
