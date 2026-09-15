@@ -1,0 +1,152 @@
+# @vuco/kit design tokens: the shared base.
+# Groups: colors (light, then every -dark twin), typography roles, rounded, spacing, components.
+# Key order here is output order. `null` marks a brand-owned slot: each file in brands/ fills every
+# slot and sets nothing else (generate-tokens.mjs exits 2 naming the key otherwise).
+# Components reference other tokens as '{group.key}', resolved after the brand is merged.
+# Split as text from vuco's DESIGN.md frontmatter (vuco c0606c9): values and quoting unchanged.
+colors:
+  surface-base: '#F3F2EF'
+  surface-raised: '#FFFFFF'
+  surface-sunken: '#EAE8E2'
+  ink-primary: '#15181D'
+  ink-secondary: '#49515B'
+  ink-disabled: '#9AA2AD'
+  primary: null  # brand-owned
+  on-primary: null  # brand-owned
+  primary-tonal: null  # brand-owned
+  on-primary-tonal: null  # brand-owned
+  link: null  # brand-owned
+  accent: null  # brand-owned
+  on-accent: null  # brand-owned
+  status-paid: '#15803D'
+  status-paid-text: '#166534'
+  status-overdue: '#D92D20'
+  status-overdue-text: '#B42318'
+  status-failed: '#B45309'
+  status-failed-text: '#92400E'
+  border-hairline: '#E3E7EC'
+  border-input: '#6B7280'
+  focus-ring: null  # brand-owned
+  surface-base-dark: '#16171B'
+  surface-raised-dark: '#212328'
+  surface-sunken-dark: '#1B1C21'
+  ink-primary-dark: '#F2F4F7'
+  ink-secondary-dark: '#A6ADB8'
+  ink-disabled-dark: '#5C636D'
+  primary-dark: null  # brand-owned
+  on-primary-dark: null  # brand-owned
+  primary-tonal-dark: null  # brand-owned
+  on-primary-tonal-dark: null  # brand-owned
+  link-dark: null  # brand-owned
+  accent-dark: null  # brand-owned
+  on-accent-dark: null  # brand-owned
+  status-paid-dark: '#4ADE80'
+  status-paid-text-dark: '#4ADE80'
+  status-overdue-dark: '#F97066'
+  status-overdue-text-dark: '#F97066'
+  status-failed-dark: '#FDB022'
+  status-failed-text-dark: '#FDB022'
+  border-hairline-dark: '#2A2F37'
+  border-input-dark: '#8A93A0'
+  focus-ring-dark: null  # brand-owned
+typography:
+  display:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 28px
+    fontWeight: 800
+    lineHeight: 1.2
+  title:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 22px
+    fontWeight: 700
+    lineHeight: 1.25
+  heading:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 17px
+    fontWeight: 600
+    lineHeight: 1.3
+  body:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 1.45
+  field:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 18px
+    fontWeight: 400
+    lineHeight: 1.4
+  meta:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 13px
+    fontWeight: 500
+    lineHeight: 1.35
+  money:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 20px
+    fontWeight: 700
+    letterSpacing: '0'
+  money-hero:
+    fontFamily: 'Plus Jakarta Sans'
+    fontSize: 44px
+    fontWeight: 700
+    lineHeight: 1.1
+    letterSpacing: '0'
+rounded:
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 24px
+  full: 9999px
+spacing:
+  '1': 4px
+  '2': 8px
+  '3': 12px
+  '4': 16px
+  '5': 24px
+  '6': 32px
+  '7': 48px
+components:
+  button-primary:
+    background: '{colors.primary}'
+    text: '{colors.on-primary}'
+    radius: '{rounded.full}'
+    min-height: 56px
+  button-secondary:
+    background: 'transparent'
+    border: '1.5px {colors.border-input}'
+    text: '{colors.ink-primary}'
+    radius: '{rounded.full}'
+    min-height: 56px
+  card:
+    background: '{colors.surface-raised}'
+    radius: '{rounded.lg}'
+    padding: '{spacing.4}'
+  chip-status:
+    radius: '{rounded.full}'
+    min-height: 32px
+    typography: '{typography.meta}'
+  bottom-bar:
+    background: '{colors.surface-raised}'
+    radius: '{rounded.full}'
+    min-height: 64px
+  fab-extra:
+    background: '{colors.accent}'
+    glyph: '{colors.on-accent}'
+    radius: '{rounded.full}'
+    size: 64px
+  input:
+    background: '{colors.surface-raised}'
+    border: '1.5px {colors.border-input}'
+    radius: '{rounded.md}'
+    min-height: 56px
+  sheet:
+    background: '{colors.surface-raised}'
+    radius-top: '{rounded.xl}'
+  banner-conflict:
+    background: '{colors.surface-sunken}'
+    border: '2px {colors.status-failed}'
+    radius: '{rounded.sm}'
+  money-tile:
+    background: '{colors.surface-raised}'
+    radius: '{rounded.lg}'
+    amount: '{typography.money}'

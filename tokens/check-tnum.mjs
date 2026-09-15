@@ -15,6 +15,8 @@ import { fileURLToPath } from "node:url";
 import * as fontkit from "fontkit";
 
 const tokensDir = dirname(fileURLToPath(import.meta.url));
+/** @param {unknown} err */
+const reason = (err) => (err instanceof Error ? err.message : String(err));
 const argFont = process.argv.indexOf("--font");
 const singleFont = argFont > -1 ? process.argv[argFont + 1] : null;
 if (argFont > -1 && !singleFont) {
@@ -33,6 +35,7 @@ const REQUIRED = [
   "PlusJakartaSans-ExtraBold.ttf",
 ];
 
+/** @param {string} path */
 function checkFont(path) {
   const font = fontkit.openSync(path);
   const hasTnum = font.availableFeatures.includes("tnum");
@@ -55,7 +58,7 @@ if (singleFont) {
   try {
     r = checkFont(singleFont);
   } catch (err) {
-    console.error(`check-tnum: cannot read '${singleFont}' as a font — ${err.message}`);
+    console.error(`check-tnum: cannot read '${singleFont}' as a font — ${reason(err)}`);
     process.exit(2);
   }
   console.log(`${r.postscriptName}: tnum=${r.hasTnum} equal-advances=${r.tabularWidth !== null} -> ${r.pass ? "PASS" : "FAIL"}`);
@@ -82,7 +85,7 @@ for (const f of files) {
   try {
     results.push(checkFont(join(fontsDir, f)));
   } catch (err) {
-    console.error(`check-tnum: cannot read '${f}' as a font — ${err.message}`);
+    console.error(`check-tnum: cannot read '${f}' as a font — ${reason(err)}`);
     process.exit(2);
   }
 }

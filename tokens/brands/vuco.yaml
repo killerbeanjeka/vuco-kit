@@ -1,0 +1,20 @@
+# @vuco/kit design tokens: the vuco brand. Fills every null slot in ../base.tokens.yaml:
+# the petrol action colour family (primary, tonal pair, link, focus ring) and the Workshop Orange
+# accent pair, each with its -dark twin. Split as text from vuco's DESIGN.md frontmatter (vuco c0606c9).
+colors:
+  primary: '#0E6E63'
+  on-primary: '#FFFFFF'
+  primary-tonal: '#E6F4F1'
+  on-primary-tonal: '#0E6E63'
+  link: '#0E6E63'
+  accent: '#EA580C'
+  on-accent: '#1A1005'
+  focus-ring: '#0E6E63'
+  primary-dark: '#1F7D72'
+  on-primary-dark: '#FFFFFF'
+  primary-tonal-dark: '#16302C'
+  on-primary-tonal-dark: '#9AD4CA'
+  link-dark: '#9AD4CA'
+  accent-dark: '#FFA35C'
+  on-accent-dark: '#1A1005'
+  focus-ring-dark: '#3FA294'

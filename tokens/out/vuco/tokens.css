@@ -1,5 +1,5 @@
-/* GENERATED from _bmad-output/planning-artifacts/ux-designs/ux-vuco-2026-07-15/DESIGN.md (frontmatter sha256:8afa19e42908) — DO NOT EDIT. */
-/* Regenerate: node design/tokens/generate-tokens.mjs   (AR-20: hand-copied values are review-rejectable) */
+/* GENERATED from tokens/base.tokens.yaml + tokens/brands/vuco.yaml (sha256:3d7f61e99528) — DO NOT EDIT. */
+/* Regenerate in @vuco/kit: node tokens/generate-tokens.mjs --brand vuco   (AR-20: hand-copied values are review-rejectable) */
 /* Money-role font per font-verdict.json: Plus Jakarta Sans (tnum confirmed 2026-07-16) */
 
 /* Self-hosted fonts (AD-14: no third-party requests from the customer's browser). */

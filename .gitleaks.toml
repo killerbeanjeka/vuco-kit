@@ -1,0 +1,10 @@
+# gitleaks configuration — extends the default ruleset.
+# No allowlists: the kit holds nothing that needs one. If a VERIFIED false positive ever does,
+# every paths+regexes entry must carry condition = "AND" (without it gitleaks ORs the lists and a
+# path-bearing entry wholesale-exempts its files from ALL rules) and regexTarget = "line" (the
+# default target is the captured SECRET, but such regexes describe line content).
+# Requires gitleaks >= 8.25 for root-level [[allowlists]] + condition — CI pins the core via
+# GITLEAKS_VERSION in secret-scan.yml; local runs: use >= 8.25.
+
+[extend]
+useDefault = true

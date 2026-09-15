@@ -1,0 +1,51 @@
+name: kit-ci
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kit-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  kit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # AR-20: every committed output must be regenerable from the token sources byte for byte.
+      - name: Generated outputs match the token sources (staleness gate)
+        run: node tokens/generate-tokens.mjs --check --brand vuco
+
+      # AR-24: the money role needs tabular figures in every bundled weight.
+      - name: Verify tnum (money font)
+        run: node tokens/check-tnum.mjs
+
+      - name: Font verdict is committed and current
+        # porcelain (not diff) so a deleted-then-regenerated (untracked) verdict also fails
+        run: test -z "$(git status --porcelain -- tokens/font-verdict.json)"

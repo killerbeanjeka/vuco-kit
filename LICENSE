@@ -1,0 +1,9 @@
+Copyright Miahkyi Yevhen Yuriiovych FOP. All rights reserved.
+
+No licence is granted to use, copy or distribute this code.
+
+Exception - fonts: the font files in tokens/fonts/ are Plus Jakarta Sans,
+Copyright 2020 The Plus Jakarta Sans Project Authors
+(https://github.com/tokotype/PlusJakartaSans). The notice above does not apply
+to them; they are licensed under the SIL Open Font License, Version 1.1, whose
+full text is in tokens/fonts/OFL.txt.

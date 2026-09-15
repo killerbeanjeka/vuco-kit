@@ -1,44 +1,61 @@
-# design/tokens — single-source design tokens (AR-20 / UX-DR1)
+# tokens — single-source design tokens (AR-20 / UX-DR1)
 
-The ONE source of visual truth is the frontmatter of
-`_bmad-output/planning-artifacts/ux-designs/ux-vuco-2026-07-15/DESIGN.md`
-(colors light+dark, typography roles, radii, spacing, component tokens).
-Everything a renderer styles with is GENERATED from it — hand-copied token
-values are a review-rejectable offense.
+The ONE source of visual truth is `base.tokens.yaml` completed by one brand file,
+`brands/<brand>.yaml` (colours light + dark, typography roles, radii, spacing, component
+tokens). Everything a renderer styles with is GENERATED from them — hand-copied token values
+are a review-rejectable offense.
+
+## Base and brands
+
+`base.tokens.yaml` holds every token, in output order. A `null` value is a brand-owned slot —
+today the action colour family (`primary`, `on-primary`, `primary-tonal`, `on-primary-tonal`,
+`link`, `focus-ring`) and the accent pair (`accent`, `on-accent`), each with its `-dark` twin.
+A brand file fills every slot and sets nothing else; otherwise the generator exits 2 naming
+the key and writes nothing. The merge (`mergeBrand`, exported by the generator) walks the base
+order, so a brand never reorders the outputs.
 
 ## Pipeline
 
 ```
-DESIGN.md frontmatter ──┐
-font-verdict.json ──────┴─> generate-tokens.mjs ──> 3 outputs (committed)
+base.tokens.yaml ──────┐
+brands/<brand>.yaml ───┼─> generate-tokens.mjs --brand <brand> ──> out/<brand>/ (committed)
+font-verdict.json ─────┘
 ```
 
-| Output | Consumer |
+| Output (`out/<brand>/`) | Consumer |
 | --- | --- |
-| `out/nativewind-theme.cjs` | `apps/mobile/tailwind.config.js` (`theme.extend`) + `vuco` component tokens |
-| `server/src/Vuco.Api/wwwroot/css/tokens.css` | Hosted Page (Epic 6): CSS custom properties + self-hosted `@font-face` (AD-14) |
-| `out/VucoDesignTokens.g.cs` | QuestPDF document renderer (Story 5.3) — not compiled until then |
+| `nativewind-theme.cjs` | the app's `tailwind.config.js` (`theme.extend`) + component tokens |
+| `tokens.css` | Hosted Page: CSS custom properties + self-hosted `@font-face` (AD-14) |
+| `VucoDesignTokens.g.cs` | QuestPDF document renderer |
 
-Commands (from repo root, after `npm ci` in design/tokens):
+Commands (from the repository root, after `npm ci`):
 
-- `node design/tokens/generate-tokens.mjs` — regenerate all outputs
-- `node design/tokens/generate-tokens.mjs --check` — CI staleness gate (byte compare)
-- `node design/tokens/check-tnum.mjs` — verify tabular figures; writes `font-verdict.json`
+- `node tokens/generate-tokens.mjs --brand vuco` — regenerate `out/vuco/`
+- `node tokens/generate-tokens.mjs --check --brand vuco` — CI staleness gate (byte compare)
+- `node tokens/check-tnum.mjs` — verify tabular figures; writes `font-verdict.json`
+- `node tokens/check-dark-pairing.mjs --src <dir> --allowlist <file.json> [--theme <file>]` —
+  run by a consuming app over its own source: every dual-mode colour token is paired with its
+  `-dark` variant; files that are single-mode on purpose are listed in the app's allowlist
+  with the reason
 
-CI: `.github/workflows/design-tokens.yml` fails on stale outputs, stale verdict, or a
-font that loses tnum. Outputs are byte-stable (LF, no timestamps; header carries a
-frontmatter content hash).
+CI (`.github/workflows/kit-ci.yml`) fails on stale outputs, a stale verdict, or a font that
+loses tnum. Outputs are byte-stable (LF, no timestamps); header line 1 names both sources and
+carries a content hash of them.
+
+Consumers never regenerate: they read `out/<brand>/` and `fonts/` from the installed kit tag,
+or keep byte copies refreshed from it.
 
 ## Fonts & the money role (AR-24)
 
 **Verdict 2026-07-16: tnum CONFIRMED for Plus Jakarta Sans 2.7.1** (all 5 weights,
 digits uniformly 600/1000 upem) — Plus Jakarta Sans is the money role in all three
-renderers; the Inter fallback was not needed. See `fonts/README.md` and
-`tools/FontProbe/` (QuestPDF embedding proof). The generator maps the money role from
-`font-verdict.json` — never edit the mapping by hand.
+renderers; the Inter fallback was not needed. See `fonts/README.md`. The generator maps the
+money role from `font-verdict.json` — never edit the mapping by hand.
 
 ## Changing tokens
 
-1. Edit DESIGN.md frontmatter (re-verify the contrast table per DESIGN.md rules).
-2. `node design/tokens/generate-tokens.mjs`
-3. Commit source + outputs together; CI enforces they match.
+1. Edit `base.tokens.yaml` or `brands/<brand>.yaml`, and re-verify the contrast table in the
+   consuming app's design spec.
+2. `node tokens/generate-tokens.mjs --brand <brand>`
+3. Commit sources and outputs together — CI enforces that they match — then release
+   (`CONTRIBUTING.md`).
