@@ -23,7 +23,8 @@
 //                this file)
 //
 // Exit codes: 0 = every use paired; 1 = unpaired uses, or an allowlist entry with no reason or no
-// file; 2 = bad arguments or unreadable input — never confuse an error with a verdict.
+// file; 2 = bad arguments, unreadable input, or a --src without .tsx files — never confuse an error
+// with a verdict.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -70,11 +71,11 @@ if (!statSync(ROOT, { throwIfNoEntry: false })?.isDirectory()) usageError(`--src
 // Surfaces that are deliberately single-mode, owned by the consuming app. Each entry states the
 // decision — an allowlist with no stated reason is just a disabled check.
 /** @type {Record<string, unknown>} */
-let INTENTIONALLY_SINGLE_MODE;
+let singleModeAllowlist;
 try {
   const parsed = JSON.parse(readFileSync(resolve(allowlistFlag), 'utf8'));
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not a JSON object');
-  INTENTIONALLY_SINGLE_MODE = parsed;
+  singleModeAllowlist = parsed;
 } catch (err) {
   usageError(`cannot use allowlist ${allowlistFlag} — ${reason(err)}`);
 }
@@ -154,11 +155,14 @@ if (darkTokens.size < 5) {
   usageError(`found only ${darkTokens.size} dual-mode colour tokens in ${THEME} — not a generated theme?`);
 }
 
+const files = tsxFilesUnder(ROOT);
+if (files.length === 0) usageError(`--src ${srcFlag} contains no .tsx files (wrong path?); scanning nothing would print OK`);
+
 /** @type {string[]} */
 const failures = [];
-for (const file of tsxFilesUnder(ROOT)) {
+for (const file of files) {
   const rel = relative(ROOT, file).split(sep).join('/');
-  if (rel in INTENTIONALLY_SINGLE_MODE) continue;
+  if (rel in singleModeAllowlist) continue;
 
   const source = readFileSync(file, 'utf8');
   const strings = [
@@ -175,7 +179,7 @@ for (const file of tsxFilesUnder(ROOT)) {
 
 // Stale allowlist entries are permanently silent exemptions, and the next file to land at that path
 // would inherit one without anyone deciding to. An entry without a reason is a disabled check.
-for (const [rel, why] of Object.entries(INTENTIONALLY_SINGLE_MODE)) {
+for (const [rel, why] of Object.entries(singleModeAllowlist)) {
   if (typeof why !== 'string' || why.trim() === '') {
     failures.push(`allowlist entry states no reason: ${rel}`);
   }

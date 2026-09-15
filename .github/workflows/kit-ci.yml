@@ -12,6 +12,8 @@ on:
   pull_request:
   push:
     branches: [master]
+    # A release tag re-runs the suite on the tagged commit and checks the tag against package.json.
+    tags: ["v*"]
 
 jobs:
   kit:
@@ -25,6 +27,30 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: A release tag matches package.json
+        if: github.ref_type == 'tag'
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match the package.json version (${expected})"
+            exit 1
+          fi
+          echo "tag ${GITHUB_REF_NAME} matches package.json"
+
+      # Consumers install the kit anonymously from a github: tag. npm fetches the tag tarball and runs
+      # nothing only while package.json defines none of these scripts.
+      - name: No install-time scripts
+        run: |
+          node -e '
+            const scripts = require("./package.json").scripts ?? {};
+            const found = ["preinstall", "install", "postinstall", "prepare", "prepack"].filter((name) => name in scripts);
+            if (found.length) {
+              console.error(`::error::install-time scripts break the anonymous github: install: ${found.join(", ")}`);
+              process.exit(1);
+            }
+            console.log("no install-time scripts");
+          '
 
       - name: Install
         run: npm ci --no-audit --no-fund
@@ -46,6 +72,28 @@ jobs:
       - name: Verify tnum (money font)
         run: node tokens/check-tnum.mjs
 
-      - name: Font verdict is committed and current
-        # porcelain (not diff) so a deleted-then-regenerated (untracked) verdict also fails
-        run: test -z "$(git status --porcelain -- tokens/font-verdict.json)"
+      - name: The package ships the five fonts, OFL.txt and tokens/out/vuco/*
+        run: |
+          npm pack --dry-run --json > "$RUNNER_TEMP/pack.json"
+          node -e '
+            const files = new Set(require(process.argv[1])[0].files.map((file) => file.path));
+            const required = ["Regular", "Medium", "SemiBold", "Bold", "ExtraBold"]
+              .map((weight) => `tokens/fonts/PlusJakartaSans-${weight}.ttf`)
+              .concat(["tokens/fonts/OFL.txt", "tokens/out/vuco/nativewind-theme.cjs", "tokens/out/vuco/tokens.css", "tokens/out/vuco/VucoDesignTokens.g.cs"]);
+            const missing = required.filter((path) => !files.has(path));
+            if (missing.length) {
+              console.error(`::error::npm pack does not list ${missing.join(", ")}`);
+              process.exit(1);
+            }
+            console.log(`npm pack lists all ${required.length} required files`);
+          ' "$RUNNER_TEMP/pack.json"
+
+      - name: The tree is unchanged (verdict, outputs, nothing stray)
+        # porcelain (not diff): an untracked file, such as a regenerated verdict or a stray output, fails too
+        run: |
+          changed="$(git status --porcelain)"
+          if [ -n "$changed" ]; then
+            echo "::error::the run changed the tree"
+            echo "$changed"
+            exit 1
+          fi

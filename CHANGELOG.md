@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- `tokens/generate-tokens.mjs` exits 2 on an unknown argument, so a typo such as `--chek` can no
+  longer run write mode and pass the staleness gate.
+- `mergeBrand` accepts only a non-empty string in a brand slot, and `#RRGGBB` in colour slots;
+  anything else exits 2 naming the key.
+- Tests: `--check` exits 1 and names the stale output; every generator run that can write happens in
+  a throw-away copy under the git-ignored `.test-tmp/`, so an interrupted run leaves nothing
+  trackable in `tokens/`.
+- `tokens/check-dark-pairing.mjs` exits 2 when `--src` holds no `.tsx` files; its hint points at the
+  allowlist file.
+- `kit-ci` also runs on `v*` tags and checks that a tag is `v` + the `package.json` version, that
+  `package.json` defines no install-time scripts, that `npm pack` lists the five fonts, `OFL.txt` and
+  `tokens/out/vuco/*`, and that the whole tree is unchanged at the end.
+- `package.json`: `engines.node` is `>=22`.
+- README no longer hard-codes a version. CONTRIBUTING: push `master`, wait for a green `kit-ci`, then
+  push the tag; a consumer bump also updates DESIGN.md's `kit:` pin and, when landing copies change,
+  the landing `?v=` tokens.
+
 ## 0.1.0 — 2026-09-15
 
 First release: design tokens and fonts, imported from vuco at commit

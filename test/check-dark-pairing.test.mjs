@@ -16,14 +16,15 @@ const check = (...args) => spawnSync(process.execPath, [script, ...args], { enco
 
 let fixtures = 0;
 /**
- * Checks a source tree holding one screen file against the default (vuco) theme.
- * @param {string} tsx
+ * Checks a source tree holding one file against the default (vuco) theme.
+ * @param {string} contents
  * @param {Record<string, string>} [allowlist]
+ * @param {string} [fileName]
  */
-function scan(tsx, allowlist = {}) {
+function scan(contents, allowlist = {}, fileName = "Screen.tsx") {
   const dir = join(scratch, String(fixtures++));
   mkdirSync(join(dir, "src"), { recursive: true });
-  writeFileSync(join(dir, "src", "Screen.tsx"), tsx);
+  writeFileSync(join(dir, "src", fileName), contents);
   writeFileSync(join(dir, "allowlist.json"), JSON.stringify(allowlist));
   return check("--src", join(dir, "src"), "--allowlist", join(dir, "allowlist.json"));
 }
@@ -58,4 +59,10 @@ test("a missing --src or --allowlist is a usage error (exit 2), not a verdict", 
   assert.equal(check().status, 2);
   assert.equal(check("--src", scratch).status, 2);
   assert.equal(check("--allowlist", join(scratch, "none.json")).status, 2);
+});
+
+test("a --src without .tsx files is a usage error (exit 2), not an OK", () => {
+  const run = scan("# no screens here\n", {}, "notes.md");
+  assert.equal(run.status, 2, run.stdout);
+  assert.match(run.stderr, /no \.tsx files/);
 });

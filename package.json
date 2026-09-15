@@ -8,6 +8,9 @@
     "type": "git",
     "url": "git+https://github.com/killerbeanjeka/vuco-kit.git"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "files": [
     "tokens",
     "AGENTS.md"

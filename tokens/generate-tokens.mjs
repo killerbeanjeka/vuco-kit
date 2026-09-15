@@ -9,8 +9,9 @@
 //                                                           committed outputs; exit 1 on drift,
 //                                                           exit 2 on generator error
 //
-// A missing, malformed or unknown --brand, and a brand that does not fit the base (a null slot it
-// leaves empty, or a key with no null slot to fill), are generator errors: exit 2, nothing written.
+// An unknown argument, a missing, malformed or unknown --brand, and a brand that does not fit the
+// base (a null slot left empty or filled with anything but a non-empty string, #RRGGBB in colour
+// slots, or a key with no null slot to fill) are generator errors: exit 2, nothing written.
 //
 // Outputs are byte-stable (LF, no timestamps). All reads/compares normalize CRLF -> LF
 // so a core.autocrlf checkout can never fake drift (1.1 LF lesson, hardened at review).
@@ -45,8 +46,9 @@ const reason = (err) => (err instanceof Error ? err.message : String(err));
 const isGroup = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
 /**
- * Completes the base token set with one brand. A brand fills exactly the base's `null` slots: a
- * slot it leaves empty and a key with no slot to fill are both errors, all named in one throw.
+ * Completes the base token set with one brand. A brand fills exactly the base's `null` slots, each
+ * with a non-empty string (`#RRGGBB` in colour slots): a slot left empty or filled with anything else,
+ * and a key with no slot to fill, are errors, all named in one throw.
  * The walk follows BASE key order, so each brand value lands where its slot sits and the outputs
  * keep their bytes — a `{ ...base, ...brand }` spread would append the brand values instead and
  * reorder all three outputs.
@@ -78,7 +80,13 @@ function fillSlots(base, brand, path, problems) {
   for (const [key, value] of Object.entries(base)) {
     const supplied = Object.hasOwn(brand, key) ? brand[key] : undefined;
     if (value === null) {
-      if (supplied === undefined || supplied === null) problems.push(`base slot '${at(key)}' is not filled by the brand`);
+      if (supplied === undefined || supplied === null) {
+        problems.push(`base slot '${at(key)}' is not filled by the brand`);
+      } else if (typeof supplied !== "string" || supplied.trim() === "") {
+        problems.push(`base slot '${at(key)}' needs a non-empty string, got ${JSON.stringify(supplied)}`);
+      } else if (at(key).startsWith("colors.") && !/^#[0-9A-Fa-f]{6}$/.test(supplied)) {
+        problems.push(`colour slot '${at(key)}' needs #RRGGBB, got ${JSON.stringify(supplied)}`);
+      }
       merged[key] = supplied ?? null;
     } else if (isGroup(value)) {
       if (supplied !== undefined && supplied !== null && !isGroup(supplied)) {
@@ -99,6 +107,19 @@ function fillSlots(base, brand, path, problems) {
 // ---- CLI ------------------------------------------------------------------------
 async function main() {
   const args = process.argv.slice(2);
+  // An unknown argument is an error: a typo such as --chek would otherwise run write mode and exit 0,
+  // silently switching the staleness gate off.
+  /** @type {string[]} */
+  const unknown = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--check") continue;
+    if (args[i] === "--brand") {
+      i++; // its value
+      continue;
+    }
+    unknown.push(args[i]);
+  }
+  if (unknown.length) fail(`unknown argument(s): ${unknown.join(" ")} (usage: --brand <name> [--check])`);
   const checkMode = args.includes("--check");
   const brandAt = args.indexOf("--brand");
   const brand = brandAt > -1 ? args[brandAt + 1] : undefined;

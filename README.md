@@ -1,14 +1,16 @@
 # @vuco/kit
 
-The shared layer of the vuco app family. Version 0.1.0 holds the design tokens, their generator
-and checks, and the fonts.
+The shared layer of the vuco app family: the design tokens, their generator and checks, and the
+fonts.
 
-Consumers depend on a tag of this public repository — no registry, no credentials, no install
-scripts:
+Consumers depend on a release tag of this public repository — no registry, no credentials, no
+install scripts:
 
 ```json
-"@vuco/kit": "github:killerbeanjeka/vuco-kit#v0.1.0"
+"@vuco/kit": "github:killerbeanjeka/vuco-kit#vX.Y.Z"
 ```
+
+Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says what each one changed.
 
 ## Contents
 
@@ -27,7 +29,7 @@ Details: [tokens/README.md](tokens/README.md).
 
 ## Develop
 
-Node 22.
+Node 22 or later.
 
 ```bash
 npm ci
@@ -36,7 +38,7 @@ node tokens/generate-tokens.mjs --check --brand vuco
 node tokens/check-tnum.mjs
 ```
 
-Releasing: [CONTRIBUTING.md](CONTRIBUTING.md). Changes: [CHANGELOG.md](CHANGELOG.md).
+Releasing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
