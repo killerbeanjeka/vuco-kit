@@ -1,7 +1,34 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-15
 
+UI primitives, the i18n setup and the base lint and TypeScript configs, imported from vuco at commit
+`969cc7ce462e24071caab153f772f01875f54995`.
+
+- `src/ui/`: `ActionChip`, `ActionRow`, `Banner`, `ButtonPrimary`, `ButtonSecondary`, `ChoiceChip`,
+  `ExplainerCard`, `Input`, `OptionRow`, `ScreenFooter`, `ScreenHeader`, `SegmentedTabs`, `Sheet`,
+  `icons` and `bottomBarSpace`, unchanged apart from two seams:
+  - `ScreenFooter` takes `items` (route name, icon, translated label) and `primaryAction` (label,
+    `onPress`) instead of vuco's tabs and its New-job route; the 600 ms re-entrancy guard, testIDs
+    and classes stay.
+  - `ScreenHeader` reads its back and close labels from the kit's `kit` namespace.
+- `src/i18n/`: `createI18n({ resources, fallbackLng })` initialises the default i18next instance —
+  Hermes plural-rules polyfills, device language, fallback — with the app's strings as `translation`
+  and the kit's (`en`, `de`) as `kit`, and returns it; `deviceBestMatchLanguage()`.
+- `config/eslint.base.js` (Expo's flat config, `dist/*` ignored) and `config/tsconfig.base.json`
+  (`expo/tsconfig.base`, `strict`, Jest types).
+- Consumers import kit files by path: `@vuco/kit/src/ui/<Name>`, `@vuco/kit/src/i18n`,
+  `@vuco/kit/config/*`. There is no root barrel and no `exports` map. `peerDependencies` name the
+  packages the source imports, at vuco's specifiers, except `react` (`~19.2.3`) and `react-native`
+  (`~0.86.0`), which take tilde ranges so an Expo SDK 57 patch in a consumer does not fail
+  `npm install`; `eslint`, `eslint-config-expo`, `expo`, `typescript` and `@types/jest` are optional
+  peers that only `config/*` needs.
+- Tooling: Jest suites (jest-expo, NativeWind JSX) for the primitives and the i18n factory, on a
+  lockfile seeded from vuco's; typecheck and lint cover the TSX source and its tests. `npm test` runs
+  `node --test "test/**/*.test.mjs"` and then Jest — a bare `node --test` would also collect the
+  TypeScript Jest suites now that Node strips types. `kit-ci` runs the dark-pairing check over `src`,
+  and its pack guard fails when a `src` or `config` file is missing or anything outside the published
+  layout ships, tests included.
 - `tokens/generate-tokens.mjs` exits 2 on an unknown argument, so a typo such as `--chek` can no
   longer run write mode and pass the staleness gate.
 - `mergeBrand` accepts only a non-empty string in a brand slot, and `#RRGGBB` in colour slots;

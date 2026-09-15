@@ -9,6 +9,16 @@ Expo changes between SDK releases. Before writing app code, read the documentati
 SDK the app pins (`https://docs.expo.dev/versions/v<SDK>.0.0/`) instead of relying on what an
 older SDK did.
 
+## Kit code stays kit code
+
+- An app reaches kit source by its path — `@vuco/kit/src/ui/<Name>`, `@vuco/kit/src/i18n`,
+  `@vuco/kit/config/*`. It never copies kit source (`src/`, `config/`) into its own tree; changing a
+  kit file is a kit release. The one allowed copy is a byte copy of token outputs or fonts for a part
+  of the app that cannot read `node_modules` (a server image, a static site), refreshed from the
+  pinned tag by a sync script and gated byte for byte.
+- Kit files import each other by relative path. Never `@/`, which in a consumer resolves to the
+  app's own `src/`, and never code from an app.
+
 ## Style only from tokens
 
 - Colours, radii, spacing and type roles come from the generated kit tokens

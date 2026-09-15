@@ -8,7 +8,9 @@ In this order:
 2. **Test** — every kit CI step locally, each exiting 0, and afterwards `git status --porcelain`
    is empty:
    `npm ci` · `npm run typecheck` · `npm run lint` · `npm test` ·
-   `node tokens/generate-tokens.mjs --check --brand vuco` · `node tokens/check-tnum.mjs`
+   `node tokens/generate-tokens.mjs --check --brand vuco` · `node tokens/check-tnum.mjs` ·
+   `node tokens/check-dark-pairing.mjs --src src --allowlist dark-pairing-allowlist.json` ·
+   `npm pack --dry-run` (it lists `src`, `config`, `tokens` and `AGENTS.md`, and no test file)
 3. **Bump** — `npm version --no-git-tag-version <x.y.z>` (semver; keeps `package-lock.json` in
    step), and rename `## Unreleased` to `## x.y.z — YYYY-MM-DD`.
 4. **Commit, push `master`, wait for green** — the founder pushes `master`; wait until `kit-ci` is
@@ -22,11 +24,17 @@ In this order:
    - set the same pin on the `kit:` line of DESIGN.md's frontmatter (`kit-pin` compares the two);
    - run `npm run sync-kit` in `apps/mobile`; when it changes a landing copy, bump the landing `?v=`
      tokens (`apps/landing/README.md`, "Kit bumps");
+   - run `npx tsc --noEmit`, `npx expo lint` and `npx jest --ci` in `apps/mobile` — kit source
+     compiles and runs inside the app;
    - commit. vuco's `kit-pin` check is red until this is done.
 
 ## Rules
 
 - Tags are immutable. A bug in `v0.1.0` is fixed in `v0.1.1`; never move or delete a tag.
+- Try a change in a consumer before its tag exists with `npm pack` here and
+  `npm install --no-save <tgz>` in the consumer, then restart Metro with `-c`. Never `npm link` or a
+  folder install: a symlinked kit resolves its own `node_modules`, and the consumer runs a second React
+  and a second i18next.
 - No `npm publish`. No `preinstall`, `install`, `postinstall`, `prepare` or `prepack` scripts: npm
   fetches the public tag tarball anonymously and runs nothing (`kit-ci` checks this).
 - Nothing app-specific, secret or customer-derived goes in — no `.env` files, keys or store
