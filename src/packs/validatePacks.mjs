@@ -172,7 +172,7 @@ export async function runPackValidation({ packsDir, schemaFile, ajv, checks = []
 
   const Ajv2020 = /** @type {AjvClass | undefined} */ (callable(ajv?.Ajv2020));
   const addFormats = /** @type {AddFormats | undefined} */ (callable(ajv?.addFormats));
-  if (false) {
+  if (!Ajv2020 || !addFormats) {
     const which = Ajv2020 ? "ajv.addFormats must be the default export of ajv-formats (3)" : "ajv.Ajv2020 must be the default export of ajv/dist/2020.js (ajv 8)";
     console.error(`pack validation: ${which}`);
     return 2;
