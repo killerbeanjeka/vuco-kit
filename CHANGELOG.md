@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.3.1 — 2026-09-16
+
+Review fixes for the 0.3.0 family contracts (vuco Story 15.3 review), including two founder decisions
+that change the `.vuco` v1 rules before any app reads or writes a bundle. Nothing under `src/ui`,
+`src/i18n`, `config` or `tokens` changed.
+
+- `.vuco` (founder decisions):
+  - `mediaType` must be a photo type: `image/jpeg`, `image/png`, `image/heic` or `image/webp`. The
+    path's extension must match it, ignoring letter case (`.jpg`/`.jpeg`, `.png`, `.heic`, `.webp`).
+    `VUCO_BUNDLE_PHOTO_TYPES` lists them, and `VucoBundleAttachment.mediaType` is their union. SVG and
+    other image types are rejected.
+  - `producer.app` accepts `vuco` or `vuco:<name>` (`VUCO_BUNDLE_PRODUCER_APP`,
+    `^vuco(?::[a-z][a-z0-9-]*)?$`), so a later family app's 1.x bundle is not refused. This replaces
+    `VUCO_BUNDLE_PRODUCERS`. The importing app decides which producers and kinds it opens.
+- `.vuco` validator:
+  - `producer.version` must be a `MAJOR.EPIC.STORY.BUILD` version name;
+  - `createdAt` must be a date-time that exists, checked field by field (leap years, hour 23 at most,
+    offset ±14 hours at most) rather than through `Date.parse`;
+  - attachment paths that differ only by letter case, file names over 255 characters or ending in a
+    dot, and a note listing one attachment twice are rejected.
+  - The README says how to build `entries`: entry names exactly as stored, compared as given.
+- `countryLiteralLint.mjs`:
+  - country codes, pack ids and locales are found between `"`, `'` or backticks, the same quote on both
+    sides, so `.ts` scans catch single-quoted and template literals (`.cs` results are unchanged);
+  - a file or folder under `--root` that cannot be read exits 2 ("cannot scan …") instead of
+    rejecting;
+  - a `--packs` folder without a two-letter pack folder, or a `--tokens` module that returns no
+    tokens, exits 2 instead of silently switching a class off;
+  - every printed path is relative to `--repo-root` (in full outside it), not to the working
+    directory.
+- `validatePacks.mjs`:
+  - an app check that throws or returns anything but a list of lines returns 2, naming the pack;
+  - `version`, `schemaVersion` and `languages[]` are checked, whatever the app schema requires;
+  - the injected ajv is typed loosely, so the README example type-checks without a cast, and checked
+    when the validator runs (a namespace import works too).
+  - A test pins `strict: true`.
+- `appVersion.mjs`: BUILD 0 is rejected; the policy says EPIC counts the epics finished since an app
+  adopted the scheme (vuco: 2026-08-06, `0.1.1.1`).
+- README: "Known gaps" discloses Sheet's English "Close" label and ExplainerCard's 44 dp secondary link.
+- `kit-ci` fails when a file under `src/` outside `src/ui/` contains `className`.
+- Tests cover each fix.
+
 ## 0.3.0 — 2026-09-16
 
 The family contracts: the generic core of vuco's pack tooling (imported from vuco at commit

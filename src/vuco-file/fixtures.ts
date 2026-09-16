@@ -3,11 +3,11 @@
 // from a real job, place or person. The digests are written out, not computed, because the kit never
 // hashes; test/vuco-file/validate.test.ts proves they are the real digests of these bytes.
 
-import type { VucoBundleEntry, VucoBundleManifest } from './types';
+import type { VucoBundleEntry, VucoBundleManifest, VucoBundlePhotoType } from './types';
 
 export interface VucoBundleFixturePhoto {
   path: string;
-  mediaType: string;
+  mediaType: VucoBundlePhotoType;
   bytes: Uint8Array;
   sha256: string;
 }

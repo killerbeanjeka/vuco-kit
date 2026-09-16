@@ -14,30 +14,43 @@ export const VUCO_BUNDLE_MANIFEST_PATH = 'manifest.json';
 /** The ZIP folder that holds every attachment, directly (no subfolders). */
 export const VUCO_BUNDLE_PHOTOS_DIR = 'photos/';
 
-/** The apps that write `.vuco` bundles. */
-export const VUCO_BUNDLE_PRODUCERS = ['vuco', 'vuco:walk'] as const;
+/**
+ * `producer.app`: `vuco`, or `vuco:<name>` for any family app (`<name>` starts with a lowercase letter,
+ * then lowercase letters, digits and `-`). The app that imports a bundle decides which producers and
+ * kinds it opens; the format itself refuses no family app.
+ */
+export const VUCO_BUNDLE_PRODUCER_APP = /^vuco(?::[a-z][a-z0-9-]*)?$/;
 
-export type VucoBundleProducerApp = (typeof VUCO_BUNDLE_PRODUCERS)[number];
+export type VucoBundleProducerApp = 'vuco' | `vuco:${string}`;
+
+/** The photo types a bundle may hold, each with the file extensions it allows (compared ignoring case). */
+export const VUCO_BUNDLE_PHOTO_TYPES = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/heic': ['.heic'],
+  'image/webp': ['.webp'],
+} as const;
+
+export type VucoBundlePhotoType = keyof typeof VUCO_BUNDLE_PHOTO_TYPES;
 
 export interface VucoBundleProducer {
   app: VucoBundleProducerApp;
-  /** The producing app's version name, e.g. `0.2.0.1`. */
+  /** The producing app's `MAJOR.EPIC.STORY.BUILD` version name, e.g. `0.2.0.1`. */
   version: string;
 }
 
 export interface VucoBundleNote {
   id: string;
   text: string;
-  /** Ids of entries in `attachments`. */
+  /** Ids of entries in `attachments`, each at most once. */
   attachmentIds?: string[];
 }
 
 export interface VucoBundleAttachment {
   id: string;
-  /** `photos/<file name>` */
+  /** `photos/<file name>`, with an extension that matches `mediaType`. */
   path: string;
-  /** An `image/*` media type. */
-  mediaType: string;
+  mediaType: VucoBundlePhotoType;
   byteLength: number;
   /** SHA-256 of the file's bytes, 64 lowercase hex digits. */
   sha256: string;
@@ -51,13 +64,16 @@ export interface VucoBundleManifest {
   producer: VucoBundleProducer;
   /** What the bundle holds, as a lowercase kebab-case name, e.g. `snag-list`. */
   kind: string;
-  /** When the bundle was written: an ISO 8601 date-time with seconds and a time zone. */
+  /** When the bundle was written: a real ISO 8601 date-time with seconds and a time zone. */
   createdAt: string;
   notes: VucoBundleNote[];
   attachments: VucoBundleAttachment[];
 }
 
-/** One file in the ZIP archive, as the caller read it: its path, its size and its SHA-256. */
+/**
+ * One file in the ZIP archive, as the caller read it: its entry name exactly as stored (forward
+ * slashes, no leading `./`), its size, and the SHA-256 of its bytes.
+ */
 export interface VucoBundleEntry {
   path: string;
   byteLength: number;

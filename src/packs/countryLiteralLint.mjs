@@ -2,9 +2,10 @@
 // The country-literal lint of a vuco-family app (Story 15.3; the engine of vuco's Story 1.6 pack lint,
 // AD-1/AR-4). Core code must contain no country literals: country-variable behaviour belongs in the
 // packs. The lint scans the files under --root for three mechanical classes:
-//   country-code : quoted ISO 3166-1 alpha-2 and alpha-3 codes ("DE", "DEU", …; the full sets), and
-//                  quoted lowercase pack ids ("de": country dispatch in core)
-//   iso-marker   : quoted locale literals ("de-DE", "de_DE") and "ISO 3166" mentions
+//   country-code : quoted ISO 3166-1 alpha-2 and alpha-3 codes ("DE", 'DEU', `AT`, …; the full sets),
+//                  and quoted lowercase pack ids ("de": country dispatch in core)
+//   iso-marker   : quoted locale literals ("de-DE", 'de_DE') and "ISO 3166" mentions
+// A quoted literal opens and closes with the same quote: ", ' or a backtick.
 //   pack-field   : the app's distinctive pack tokens (--tokens), in every spelling the app lists
 // Wordings and statute references are enforced in review, not by this lint.
 //
@@ -16,13 +17,16 @@
 //   --allowlist  {"entries": [{"path": "<glob>", "class": "<class>", "token": "<optional>", "reason": "<why>"}]}.
 //                `**/` matches whole path segments, `*` and `?` stay inside one. A missing file means no
 //                exemptions; a malformed one is an error.
-//   --repo-root  the base of the allowlist globs and of the report paths (default: the working directory)
-//   --packs      the packs folder: its two-letter directory names are the pack ids
-//   --tokens     an ES module whose default export returns, or resolves to, [{ token, spellings }]
+//   --repo-root  the base of the allowlist globs and of every path the report shows (default: the
+//                working directory); a path outside it is shown in full
+//   --packs      the packs folder: its two-letter directory names are the pack ids (at least one)
+//   --tokens     an ES module whose default export returns, or resolves to, a non-empty
+//                [{ token, spellings }]
 //
 // Report lines: `[class] path:line token="…" — why`, then the trimmed source line.
-// Exit codes: 0 = clean; 1 = findings, or 0 files scanned; 2 = bad arguments, an unreadable --root,
-// --packs or --tokens, or a malformed allowlist — never confuse an error with a verdict.
+// Exit codes: 0 = clean; 1 = findings, or 0 files scanned; 2 = bad arguments, an unreadable or empty
+// --packs or --tokens, a malformed allowlist, or a file or folder under --root that cannot be read —
+// never confuse an error with a verdict.
 //
 // An app wraps this with its own defaults (vuco: packs/lint/pack-lint.mjs) and calls main(argv).
 
@@ -64,11 +68,13 @@ class UsageError extends LintError {}
 const reason = (err) => (err instanceof Error ? err.message : String(err));
 
 /**
- * A path as the report shows it: relative to the working directory when it lies below it.
+ * A path as the report shows it: relative to the repo root when it lies below it, otherwise in full.
+ * The working directory plays no part, so the output is the same wherever the lint runs.
  * @param {string} path
+ * @param {string} base  the resolved --repo-root
  */
-function display(path) {
-  const rel = relative(process.cwd(), path);
+function display(path, base) {
+  const rel = relative(base, path);
   return rel && !rel.startsWith("..") && !isAbsolute(rel) ? rel.split(sep).join("/") : path;
 }
 
@@ -108,26 +114,37 @@ function parseExtensions(list) {
 }
 
 /**
+ * The pack ids: the two-letter folder names under --packs. A folder without any would silently switch
+ * off the pack-id check, so it is an error.
  * @param {string} dir
+ * @param {string} base
  * @returns {Set<string>}
  */
-function readPackIds(dir) {
+function readPackIds(dir, base) {
+  /** @type {Set<string>} */
+  let ids;
   try {
-    return new Set(
+    ids = new Set(
       readdirSync(dir, { withFileTypes: true })
         .filter((entry) => entry.isDirectory() && /^[a-z]{2}$/.test(entry.name))
         .map((entry) => entry.name),
     );
   } catch (err) {
-    throw new LintError(`cannot read --packs ${display(dir)} — ${reason(err)}`);
+    throw new LintError(`cannot read --packs ${display(dir, base)} — ${reason(err)}`);
   }
+  if (ids.size === 0) {
+    throw new LintError(`--packs ${display(dir, base)} holds no two-letter pack folder, so no pack id would be checked`);
+  }
+  return ids;
 }
 
 /**
+ * The pack tokens. An empty list would silently switch off the pack-field check, so it is an error.
  * @param {string} file
+ * @param {string} base
  * @returns {Promise<PackToken[]>}
  */
-async function loadTokens(file) {
+async function loadTokens(file, base) {
   /** @type {unknown} */
   let tokens;
   try {
@@ -135,7 +152,7 @@ async function loadTokens(file) {
     if (typeof loaded.default !== "function") throw new Error("its default export is not a function");
     tokens = await loaded.default();
   } catch (err) {
-    throw new LintError(`cannot use --tokens ${display(file)} — ${reason(err)}`);
+    throw new LintError(`cannot use --tokens ${display(file, base)} — ${reason(err)}`);
   }
   const valid =
     Array.isArray(tokens) &&
@@ -150,19 +167,24 @@ async function loadTokens(file) {
         item.spellings.every((/** @type {unknown} */ spelling) => typeof spelling === "string" && spelling.length > 0),
     );
   if (!valid) {
-    throw new LintError(`--tokens ${display(file)} must return [{ token, spellings }] with non-empty strings`);
+    throw new LintError(`--tokens ${display(file, base)} must return [{ token, spellings }] with non-empty strings`);
   }
-  return /** @type {PackToken[]} */ (tokens);
+  const list = /** @type {PackToken[]} */ (tokens);
+  if (list.length === 0) {
+    throw new LintError(`--tokens ${display(file, base)} returned no tokens, so no pack field would be checked`);
+  }
+  return list;
 }
 
 /**
  * A missing allowlist means no exemptions; a malformed one fails loud, because a swallowed parse error
  * would silently strip every sanctioned exemption and a silently accepted bad entry would exempt too much.
  * @param {string} file
+ * @param {string} base
  * @returns {Promise<AllowlistEntry[]>}
  */
-async function loadAllowlist(file) {
-  const name = display(file);
+async function loadAllowlist(file, base) {
+  const name = display(file, base);
   let raw;
   try {
     raw = await readFile(file, "utf8");
@@ -286,14 +308,14 @@ export async function main(argv) {
     const packs = args.get("--packs");
     if (packs !== undefined) {
       packsDir = resolve(packs);
-      packIds = readPackIds(packsDir);
+      packIds = readPackIds(packsDir, repoRoot);
     }
     const tokens = args.get("--tokens");
-    if (tokens !== undefined) packTokens = await loadTokens(resolve(tokens));
+    if (tokens !== undefined) packTokens = await loadTokens(resolve(tokens), repoRoot);
     const allowlistArg = args.get("--allowlist");
     if (allowlistArg !== undefined) {
       allowlistFile = resolve(allowlistArg);
-      allowlist = await loadAllowlist(allowlistFile);
+      allowlist = await loadAllowlist(allowlistFile, repoRoot);
     }
   } catch (err) {
     if (!(err instanceof LintError)) throw err;
@@ -305,10 +327,29 @@ export async function main(argv) {
   /** @type {{ loc: string, cls: string, token: string, why: string, line: string }[]} */
   const findings = [];
   let filesScanned = 0;
-  for await (const file of walk(scanRoot, extensions)) {
-    filesScanned++;
-    const relPath = relative(repoRoot, file).split(sep).join("/");
-    const lines = (await readFile(file, "utf8")).split(/\r?\n/);
+  /** @type {string} */
+  let current = scanRoot;
+  try {
+    for await (const file of walk(scanRoot, extensions)) {
+      current = file;
+      filesScanned++;
+      const relPath = relative(repoRoot, file).split(sep).join("/");
+      const lines = (await readFile(file, "utf8")).split(/\r?\n/);
+      scanLines(lines, relPath);
+    }
+  } catch (err) {
+    // A folder or file that cannot be read is an error, not a verdict: never exit 1 (findings) for it.
+    // A failed folder read carries its path; a failed file read may not, so fall back to that file.
+    const failed = /** @type {NodeJS.ErrnoException} */ (err).path ?? current;
+    console.error(`pack-lint: cannot scan ${display(failed, repoRoot)} — ${reason(err)}`);
+    return 2;
+  }
+
+  /**
+   * @param {string[]} lines
+   * @param {string} relPath
+   */
+  function scanLines(lines, relPath) {
     lines.forEach((line, i) => {
       const loc = `${relPath}:${i + 1}`;
       /**
@@ -322,20 +363,20 @@ export async function main(argv) {
         }
       };
       // country-code: an exact quoted literal — uppercase ISO codes, and lowercase pack ids
-      // (`packId == "de"` dispatch is the flagship leakage vector)
-      for (const m of line.matchAll(/"([A-Z]{2,3})"/g)) {
-        if (ALPHA2.has(m[1]) || ALPHA3.has(m[1])) {
-          record("country-code", m[1], "ISO 3166-1 country code as string literal");
+      // (`packId == "de"` dispatch is the flagship leakage vector). The same quote opens and closes.
+      for (const m of line.matchAll(/(["'`])([A-Z]{2,3})\1/g)) {
+        if (ALPHA2.has(m[2]) || ALPHA3.has(m[2])) {
+          record("country-code", m[2], "ISO 3166-1 country code as string literal");
         }
       }
-      for (const m of line.matchAll(/"([a-z]{2})"/g)) {
-        if (packIds.has(m[1])) {
-          record("country-code", m[1], "pack id as string literal (country dispatch in core)");
+      for (const m of line.matchAll(/(["'`])([a-z]{2})\1/g)) {
+        if (packIds.has(m[2])) {
+          record("country-code", m[2], "pack id as string literal (country dispatch in core)");
         }
       }
       // iso-marker: locale literals and explicit ISO 3166 mentions
-      for (const m of line.matchAll(/"([a-z]{2}[-_][A-Z]{2})"/g)) {
-        record("iso-marker", m[1], "locale literal");
+      for (const m of line.matchAll(/(["'`])([a-z]{2}[-_][A-Z]{2})\1/g)) {
+        record("iso-marker", m[2], "locale literal");
       }
       if (/ISO\s?3166/.test(line)) {
         record("iso-marker", "ISO 3166", "ISO 3166 mention");
@@ -359,8 +400,8 @@ export async function main(argv) {
     for (const f of findings) {
       console.error(`  [${f.cls}] ${f.loc} token="${f.token}" — ${f.why}\n    ${f.line}`);
     }
-    const packsHint = packsDir === undefined ? "the packs" : `${display(packsDir)}/`;
-    const allowlistHint = allowlistFile === undefined ? "--allowlist <file.json>" : display(allowlistFile);
+    const packsHint = packsDir === undefined ? "the packs" : `${display(packsDir, repoRoot)}/`;
+    const allowlistHint = allowlistFile === undefined ? "--allowlist <file.json>" : display(allowlistFile, repoRoot);
     console.error(
       `\nFix: move country-variable behavior into ${packsHint}, or add a justified allowlist entry (${allowlistHint}).`,
     );

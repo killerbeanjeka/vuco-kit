@@ -3,7 +3,7 @@
 // the allowlist. Each case builds its own tree under the OS temp directory and runs the real CLI.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
@@ -181,6 +181,12 @@ test("bad arguments exit 2 with the usage line", () => {
   writeFileSync(badTokens, 'export default () => [{ token: "x", spellings: [] }];\n');
   const noDefault = join(root, "no-default.mjs");
   writeFileSync(noDefault, "export const tokens = [];\n");
+  const noTokens = join(root, "no-tokens.mjs");
+  writeFileSync(noTokens, "export default async () => [];\n");
+  const noPacks = join(root, "not-packs");
+  mkdirSync(join(noPacks, "schema"), { recursive: true });
+  mkdirSync(join(noPacks, "DE"), { recursive: true });
+  mkdirSync(join(noPacks, "deu"), { recursive: true });
   // [arguments, message, whether the usage line follows]
   /** @type {[string[], string, boolean][]} */
   const cases = [
@@ -200,6 +206,9 @@ test("bad arguments exit 2 with the usage line", () => {
     [["--root", core, "--ext", ".cs", "--tokens", join(root, "missing.mjs")], "cannot use --tokens", false],
     [["--root", core, "--ext", ".cs", "--tokens", noDefault], "its default export is not a function", false],
     [["--root", core, "--ext", ".cs", "--tokens", badTokens], "must return [{ token, spellings }]", false],
+    // A switched-off class must not pass silently.
+    [["--root", core, "--ext", ".cs", "--packs", noPacks], "holds no two-letter pack folder", false],
+    [["--root", core, "--ext", ".cs", "--tokens", noTokens], "returned no tokens", false],
   ];
   for (const [args, message, usage] of cases) {
     const run = lint(args);
@@ -237,6 +246,82 @@ test("a malformed allowlist exits 2 and names the problem", () => {
   const unreadable = lint(fullArgs(root, ["--allowlist", join(root, "packs")]));
   assert.equal(unreadable.code, 2, unreadable.stdout);
   assert.match(unreadable.stderr, /pack-lint: cannot read .*packs — /);
+});
+
+test("single-quoted and template literals are caught too; the quotes must match", () => {
+  const lines = [
+    "const a = 'DE';",
+    "const b = `DEU`;",
+    "if (packId === 'de') { }",
+    "const c = 'de-DE';",
+    "const d = `fr_FR`;",
+    "const e = 'DE\"; const f = \"AT';",
+    "const g = \"it's\"; const h = 'X'; const i = `de`.length;",
+  ];
+  const root = repo({ "core/app.ts": `${lines.join("\n")}\n` });
+  const run = lint(fullArgs(root).map((arg) => (arg === ".cs" ? ".ts" : arg)));
+  assert.equal(run.code, 1, run.stderr);
+  const reported = [...run.stderr.matchAll(/\[([a-z-]+)\] core\/app\.ts:(\d+) token="([^"]+)"/g)].map((m) => m.slice(1).join(" "));
+  assert.deepEqual(reported, [
+    "country-code 1 DE",
+    "country-code 2 DEU",
+    "country-code 3 de",
+    "iso-marker 4 de-DE",
+    "iso-marker 5 fr_FR",
+    "country-code 7 de",
+  ]);
+});
+
+test("double-quoted literals in .cs files are reported as before; a char literal is not a code", () => {
+  const root = repo({ "core/A.cs": "var c = \"DE\"; var ch = 'D'; // it's \"AT\"\n" });
+  const run = lint(fullArgs(root));
+  assert.equal(run.code, 1);
+  const tokens = [...run.stderr.matchAll(/token="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(tokens, ["DE", "AT"]);
+});
+
+test("a file or folder under --root that cannot be read is exit 2, not a verdict", (t) => {
+  // Links named like source files: one to a folder (reading it fails), one to nothing. Windows makes
+  // junctions without special rights; elsewhere the type argument is ignored and a symlink is made.
+  const cases = [
+    ["linked.cs", (/** @type {string} */ root) => join(root, "target")],
+    ["dangling.cs", (/** @type {string} */ root) => join(root, "missing")],
+  ];
+  let ran = 0;
+  for (const [name, target] of /** @type {[string, (root: string) => string][]} */ (cases)) {
+    const root = repo({ "core/A.cs": "var ok = 1;\n", "target/B.cs": "var ok = 2;\n" });
+    try {
+      symlinkSync(target(root), join(root, "core", name), "junction");
+    } catch (err) {
+      t.diagnostic(`${name} not run: this system does not allow the link (${err instanceof Error ? err.message : err})`);
+      continue;
+    }
+    ran++;
+    const run = lint(fullArgs(root));
+    assert.equal(run.code, 2, `${name}: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, new RegExp(`^pack-lint: cannot scan core/${name.replace(".", "\\.")} — `));
+    assert.equal(run.stdout, "");
+  }
+  if (ran === 0) t.skip("this system allows neither a junction nor a symlink, so no unreadable entry could be made");
+});
+
+test("paths in messages are relative to --repo-root wherever the lint runs, and in full outside it", () => {
+  const root = repo({ "core/X.cs": 'var c = "FR";\n' });
+  writeFileSync(join(root, "allowlist.json"), JSON.stringify({ entries: [] }));
+  const args = fullArgs(root, ["--allowlist", join(root, "allowlist.json")]);
+  for (const cwd of [root, join(root, "core"), join(root, "packs"), tmpdir()]) {
+    const run = lint(args, cwd);
+    assert.equal(run.code, 1, run.stderr);
+    assert.ok(
+      run.stderr.endsWith("\nFix: move country-variable behavior into packs/, or add a justified allowlist entry (allowlist.json).\n"),
+      `from ${cwd}:\n${run.stderr}`,
+    );
+  }
+  const outside = mkdtempSync(join(scratch, "outside-"));
+  writeFileSync(join(outside, "allowlist.json"), "{ not json");
+  const run = lint(fullArgs(root, ["--allowlist", join(outside, "allowlist.json")]), join(root, "core"));
+  assert.equal(run.code, 2);
+  assert.ok(run.stderr.startsWith(`pack-lint: ${join(outside, "allowlist.json")} is not valid JSON — `), run.stderr);
 });
 
 test("main(argv) returns the exit code instead of ending the process", async (t) => {

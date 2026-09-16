@@ -16,12 +16,8 @@ import {
   runPackValidation,
 } from "../../src/packs/validatePacks.mjs";
 
-// Under `module: nodenext` TypeScript types the default import of these CommonJS packages as their
-// module namespace, while Node hands over module.exports: the Ajv2020 class and the formats plugin.
-// The runtime values are exactly what an app passes.
-const ajv = /** @type {import("../../src/packs/validatePacks.mjs").AjvDependencies} */ (
-  /** @type {unknown} */ ({ Ajv2020, addFormats })
-);
+// Passed exactly as an app imports them, with no cast: this file type-checks the README example.
+const ajv = { Ajv2020, addFormats };
 
 const scratch = mkdtempSync(join(tmpdir(), "kit-validate-packs-"));
 after(() => rmSync(scratch, { recursive: true, force: true }));
@@ -60,8 +56,9 @@ let folders = 0;
 /**
  * A packs folder with one pack.json per entry (a string is written as it is) and the schema beside it.
  * @param {Record<string, unknown>} packs  directory name -> pack.json content
+ * @param {unknown} [schema]
  */
-function packsFolder(packs) {
+function packsFolder(packs, schema = SCHEMA) {
   const root = join(scratch, String(folders++));
   const packsDir = join(root, "packs");
   mkdirSync(packsDir, { recursive: true });
@@ -70,7 +67,7 @@ function packsFolder(packs) {
     writeFileSync(join(packsDir, dir, "pack.json"), typeof content === "string" ? content : JSON.stringify(content));
   }
   const schemaFile = join(root, "pack.schema.json");
-  writeFileSync(schemaFile, JSON.stringify(SCHEMA));
+  writeFileSync(schemaFile, JSON.stringify(schema));
   return { packsDir, schemaFile };
 }
 
@@ -199,9 +196,81 @@ test("an unreadable schema or packs directory is exit 2, not a verdict", async (
   assert.match(noPacks.stderr, /cannot read the packs directory/);
 });
 
-test("a check that returns something other than an array is a programming error", async (t) => {
-  const check = /** @type {any} */ (() => "duplicate key");
-  await assert.rejects(run(t, packsFolder({ aa: pack("aa") }), [check]), TypeError);
+test("an app check that throws, or returns anything but a list of lines, is exit 2 naming the pack", async (t) => {
+  const throwing = () => {
+    throw new Error("boom in the app check");
+  };
+  const cases = [
+    [throwing, "packs/aa/pack.json: an app check failed — boom in the app check"],
+    [() => "duplicate key", "packs/aa/pack.json: an app check returned string, not a list of problem lines"],
+    [() => null, "packs/aa/pack.json: an app check returned null, not a list of problem lines"],
+    [() => ["fine", 7], "packs/aa/pack.json: an app check returned a list with entries that are not text, not a list of problem lines"],
+  ];
+  for (const [check, message] of cases) {
+    const result = await run(t, packsFolder({ aa: pack("aa"), bb: pack("bb") }), [/** @type {any} */ (check)]);
+    assert.equal(result.code, 2, String(message));
+    assert.equal(result.stderr, message);
+    assert.equal(result.stdout, "", "no valid line for the pack, and the run stops there");
+  }
+});
+
+test("a pack without the conventions the kit relies on fails, even when the app schema lets it through", async (t) => {
+  const loose = { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object" };
+  const cases = [
+    [{ packId: "aa" }, ["version: must be a non-empty string", "schemaVersion: must be a non-negative integer or a non-empty string", "languages: must list the pack's languages as two-letter codes"]],
+    [{ packId: "aa", version: " ", schemaVersion: -1, languages: ["en"] }, ["version: must be a non-empty string", "schemaVersion: must be a non-negative integer or a non-empty string"]],
+    [{ packId: "aa", version: "1.0.0", schemaVersion: 1.5, languages: [] }, ["schemaVersion: must be a non-negative integer or a non-empty string", "languages: must list the pack's languages as two-letter codes"]],
+  ];
+  for (const [content, problems] of cases) {
+    const result = await run(t, packsFolder({ aa: content }, loose));
+    assert.equal(result.code, 1, result.stderr);
+    assert.equal(result.stdout, "", "no valid line may print");
+    const lines = /** @type {string[]} */ (problems);
+    assert.equal(result.stderr, [`packs/aa/pack.json: ${lines.length} semantic violation(s):`, ...lines.map((line) => `  ${line}`)].join("\n"));
+  }
+  const fine = await run(t, packsFolder({ aa: { packId: "aa", version: "1.0.0", schemaVersion: "2026-09", languages: ["en"] } }, loose));
+  assert.equal(fine.code, 0, fine.stderr);
+  assert.equal(fine.stdout, "packs/aa/pack.json: valid (schema v2026-09, pack v1.0.0, languages [en] covered)");
+});
+
+test("the schema compiles in strict mode: a misspelled keyword is exit 2 with ajv's message", async (t) => {
+  const misspelled = { ...SCHEMA, properties: { ...SCHEMA.properties, version: { type: "string", minLenght: 1 } } };
+  const result = await run(t, packsFolder({ aa: pack("aa") }, misspelled));
+  assert.equal(result.code, 2, result.stdout);
+  assert.match(result.stderr, /^pack validation: cannot use the schema .*pack\.schema\.json — strict mode: unknown keyword: "minLenght"/);
+});
+
+test("ajv must be passed in as imported: a namespace import works too, anything else is exit 2", async (t) => {
+  const namespaces = { Ajv2020: { default: Ajv2020 }, addFormats: { default: addFormats } };
+  const ok = await runWith(t, namespaces);
+  assert.equal(ok.code, 0, ok.stderr);
+  const cases = [
+    [{ Ajv2020: {}, addFormats }, "pack validation: ajv.Ajv2020 must be the default export of ajv/dist/2020.js (ajv 8)"],
+    [{ Ajv2020, addFormats: "ajv-formats" }, "pack validation: ajv.addFormats must be the default export of ajv-formats (3)"],
+    [undefined, "pack validation: ajv.Ajv2020 must be the default export of ajv/dist/2020.js (ajv 8)"],
+  ];
+  for (const [deps, message] of cases) {
+    const result = await runWith(t, deps);
+    assert.equal(result.code, 2);
+    assert.equal(result.stderr, message);
+  }
+
+  /**
+   * @param {import("node:test").TestContext} t
+   * @param {unknown} deps
+   */
+  async function runWith(t, deps) {
+    /** @type {string[]} */
+    const stderr = [];
+    t.mock.method(console, "log", () => {});
+    t.mock.method(console, "error", (/** @type {unknown[]} */ ...args) => stderr.push(args.join(" ")));
+    try {
+      const code = await runPackValidation({ ...packsFolder({ aa: pack("aa") }), ajv: /** @type {any} */ (deps) });
+      return { code, stderr: stderr.join("\n") };
+    } finally {
+      t.mock.restoreAll();
+    }
+  }
 });
 
 test("translated strings are found by shape at any depth, with their paths", () => {

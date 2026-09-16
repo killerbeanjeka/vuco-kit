@@ -13,12 +13,14 @@ app: it uses semver tags (`CONTRIBUTING.md`).
   story and its epic, the epic bump applies.
 - MAJOR belongs to the app's owner. No script raises it; the owner edits it by hand.
 - A version name is four non-negative integers without leading zeros, and nothing else: no `v` prefix
-  and no suffix.
+  and no suffix. BUILD is at least 1; MAJOR, EPIC and STORY may be 0.
 
 ## What the segments count
 
-- **EPIC counts finished epics.** It is not the number an epic has in the planning documents (founder,
-  2026-09-16). vuco finished its Epic 15 by moving from `0.1.10.2` to `0.2.0.1`.
+- **EPIC counts the epics finished since the app adopted this scheme.** It is not the number an epic has
+  in the planning documents (founder, 2026-09-16), and epics finished before the scheme do not count.
+  vuco adopted the scheme on 2026-08-06 at `0.1.1.1`, and finishing its Epic 15 moved it from
+  `0.1.10.2` to `0.2.0.1`.
 - **STORY** counts the stories finished since the last epic bump.
 - **BUILD** starts at 1 with every story or epic bump and goes up by one with every fix after it.
 
@@ -37,7 +39,7 @@ formatAppVersion({ major: 0, epic: 2, story: 0, build: 1 }); // '0.2.0.1'
 ```
 
 Each function throws on input it does not recognise and names it: `0.1.10`, `0.01.1.1`, `v0.1.1.1`,
-`1.2.3.x`, and any kind other than `fix`, `story` or `epic` (`major` included).
+`1.2.3.x`, a BUILD of `0` (`0.1.1.0`), and any kind other than `fix`, `story` or `epic` (`major` included).
 
 An app wraps the helper in a script that rewrites only the version value in its app config and leaves
 every other byte alone. In vuco that is `npm run bump -- <fix|story|epic>` in `apps/mobile`

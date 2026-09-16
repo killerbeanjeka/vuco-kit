@@ -11,16 +11,18 @@
 /**
  * @typedef {object} AppVersion
  * @property {number} major  raised only by the app's owner, never by this helper
- * @property {number} epic  how many epics are finished
+ * @property {number} epic  how many epics are finished since the app adopted the scheme
  * @property {number} story  how many stories are finished since the last epic
- * @property {number} build  the fix counter within the current story
+ * @property {number} build  starts at 1 with each story or epic bump; one more per fix
  */
 
 /** The kinds bumpAppVersion accepts. MAJOR is not one of them. */
 export const BUMP_KINDS = /** @type {const} */ (["fix", "story", "epic"]);
 
-// Four non-negative integers without leading zeros, and nothing else: no `v` prefix, no suffix.
-const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+// Four non-negative integers without leading zeros, and nothing else: no `v` prefix, no suffix. BUILD
+// starts at 1, so it is never 0; MAJOR, EPIC and STORY may be.
+const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.([1-9]\d*)$/;
+const RULE = "MAJOR.EPIC.STORY.BUILD, four non-negative integers without leading zeros and a BUILD of at least 1";
 
 /**
  * @param {unknown} text  e.g. '0.1.10.2'
@@ -31,7 +33,7 @@ export function parseAppVersion(text) {
   const parts = match ? match.slice(1).map(Number) : [];
   if (!match || !parts.every(Number.isSafeInteger)) {
     throw new Error(
-      `invalid app version ${JSON.stringify(text)}: expected MAJOR.EPIC.STORY.BUILD, four non-negative integers without leading zeros`,
+      `invalid app version ${JSON.stringify(text)}: expected ${RULE}`,
     );
   }
   const [major, epic, story, build] = parts;
@@ -44,8 +46,11 @@ export function parseAppVersion(text) {
  */
 export function formatAppVersion(version) {
   const parts = [version?.major, version?.epic, version?.story, version?.build];
-  if (!parts.every((part) => Number.isSafeInteger(part) && /** @type {number} */ (part) >= 0)) {
-    throw new Error(`invalid app version ${JSON.stringify(version)}: every segment must be a non-negative integer`);
+  const valid =
+    parts.every((part) => Number.isSafeInteger(part) && /** @type {number} */ (part) >= 0) &&
+    /** @type {number} */ (version.build) >= 1;
+  if (!valid) {
+    throw new Error(`invalid app version ${JSON.stringify(version)}: expected ${RULE}`);
   }
   return parts.join(".");
 }

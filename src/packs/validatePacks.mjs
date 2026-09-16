@@ -20,8 +20,11 @@
 // A translated string is any object whose keys are all two-letter language codes and whose values
 // are all strings. Every other pack field, and the whole schema, belongs to the app (AD-1).
 //
+// The kit checks those conventions itself (a schema may not require them): a pack without them fails.
+//
 // Exit codes (returned, never passed to process.exit): 0 = every pack is valid; 1 = a pack failed, or
-// there is no pack directory; 2 = the schema or the packs directory cannot be read or compiled.
+// there is no pack directory; 2 = the schema or the packs directory cannot be read or compiled, the ajv
+// passed in is not usable, or an app check throws or returns something other than a list of lines.
 
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
@@ -44,11 +47,17 @@ const TWO_LETTERS = /^[a-z]{2}$/;
  * @typedef {((data: unknown) => boolean) & { errors?: { instancePath: string, message?: string }[] | null }} AjvValidate
  */
 
+/** @typedef {new (options: { allErrors: boolean, strict: boolean }) => AjvInstance} AjvClass */
+/** @typedef {(ajv: AjvInstance) => unknown} AddFormats */
+
 /**
+ * ajv 8 and ajv-formats 3, passed exactly as the caller imports them:
+ * `import Ajv2020 from 'ajv/dist/2020.js'` and `import addFormats from 'ajv-formats'`. The types are
+ * loose on purpose: under `module: nodenext` TypeScript types those CommonJS default imports as module
+ * namespaces, while Node hands over the class and the function. The kit checks their shape when it runs.
  * @typedef {object} AjvDependencies
- * @property {new (options: { allErrors: boolean, strict: boolean }) => AjvInstance} Ajv2020
- *   the default export of `ajv/dist/2020.js` (ajv 8)
- * @property {(ajv: AjvInstance) => unknown} addFormats  the default export of `ajv-formats` (3)
+ * @property {unknown} Ajv2020  the default export of `ajv/dist/2020.js`
+ * @property {unknown} addFormats  the default export of `ajv-formats`
  */
 
 /**
@@ -66,6 +75,36 @@ function isRecord(value) {
 
 /** @param {unknown} err */
 const reason = (err) => (err instanceof Error ? err.message : String(err));
+
+/**
+ * A function, or the function on a namespace object's `default` (a namespace import); otherwise undefined.
+ * @param {unknown} value
+ * @returns {Function | undefined}
+ */
+function callable(value) {
+  if (typeof value === "function") return value;
+  if (isRecord(value) && typeof value.default === "function") return value.default;
+  return undefined;
+}
+
+/**
+ * The version and schemaVersion conventions (languages[] is checked with the coverage). A schema that does
+ * not require them would otherwise let a pack through and print "vundefined".
+ * @param {Record<string, unknown>} pack
+ * @returns {string[]}
+ */
+function versionProblems(pack) {
+  const problems = [];
+  if (typeof pack.version !== "string" || pack.version.trim() === "") {
+    problems.push("version: must be a non-empty string");
+  }
+  const { schemaVersion } = pack;
+  const schemaVersionOk =
+    (typeof schemaVersion === "string" && schemaVersion.trim() !== "") ||
+    (typeof schemaVersion === "number" && Number.isInteger(schemaVersion) && schemaVersion >= 0);
+  if (!schemaVersionOk) problems.push("schemaVersion: must be a non-negative integer or a non-empty string");
+  return problems;
+}
 
 /**
  * Every translated string in a pack, matched by shape, so a new pack slot is covered without a code
@@ -131,12 +170,20 @@ export async function runPackValidation({ packsDir, schemaFile, ajv, checks = []
   /** @param {string} id */
   const label = (id) => `${basename(packsDir)}/${id}/pack.json`;
 
+  const Ajv2020 = /** @type {AjvClass | undefined} */ (callable(ajv?.Ajv2020));
+  const addFormats = /** @type {AddFormats | undefined} */ (callable(ajv?.addFormats));
+  if (false) {
+    const which = Ajv2020 ? "ajv.addFormats must be the default export of ajv-formats (3)" : "ajv.Ajv2020 must be the default export of ajv/dist/2020.js (ajv 8)";
+    console.error(`pack validation: ${which}`);
+    return 2;
+  }
+
   /** @type {AjvValidate} */
   let validate;
   try {
     const schema = JSON.parse(await readFile(schemaFile, "utf8"));
-    const instance = new ajv.Ajv2020({ allErrors: true, strict: true });
-    ajv.addFormats(instance);
+    const instance = new Ajv2020({ allErrors: true, strict: true });
+    addFormats(instance);
     validate = instance.compile(schema);
   } catch (err) {
     console.error(`pack validation: cannot use the schema ${schemaFile} — ${reason(err)}`);
@@ -183,10 +230,21 @@ export async function runPackValidation({ packsDir, schemaFile, ajv, checks = []
       console.error(`${label(id)}: packId "${packId}" does not match directory "${id}"`);
       continue;
     }
-    const problems = languageCoverageProblems(pack);
+    const problems = [...versionProblems(pack), ...languageCoverageProblems(pack)];
     for (const check of checks) {
-      const found = check(pack);
-      if (!Array.isArray(found)) throw new TypeError(`a pack check returned ${typeof found}, not an array of problems`);
+      /** @type {unknown} */
+      let found;
+      try {
+        found = check(pack);
+      } catch (err) {
+        console.error(`${label(id)}: an app check failed — ${reason(err)}`);
+        return 2;
+      }
+      if (!Array.isArray(found) || !found.every((line) => typeof line === "string")) {
+        const what = Array.isArray(found) ? "a list with entries that are not text" : found === null ? "null" : typeof found;
+        console.error(`${label(id)}: an app check returned ${what}, not a list of problem lines`);
+        return 2;
+      }
       problems.push(...found);
     }
     if (problems.length > 0) {

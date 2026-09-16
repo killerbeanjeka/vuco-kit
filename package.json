@@ -1,6 +1,6 @@
 {
   "name": "@vuco/kit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Shared layer of the vuco app family: design tokens, their generator and checks, fonts, UI primitives, the i18n setup, base lint and TypeScript configs, and the family contracts (pack tooling, the .vuco hand-over bundle, the app version helper).",
   "license": "SEE LICENSE IN LICENSE",

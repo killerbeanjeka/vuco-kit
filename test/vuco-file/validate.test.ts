@@ -8,7 +8,9 @@ import {
   SUPPORTED_FORMAT_MAJOR,
   validateVucoBundle,
   VUCO_BUNDLE_MANIFEST_PATH,
+  VUCO_BUNDLE_PHOTO_TYPES,
   VUCO_BUNDLE_PHOTOS_DIR,
+  VUCO_BUNDLE_PRODUCER_APP,
   type VucoBundleEntry,
   type VucoBundleValidation,
 } from '../../src/vuco-file';
@@ -59,6 +61,13 @@ describe('the fixture', () => {
     expect(SUPPORTED_FORMAT_MAJOR).toBe(1);
     expect(VUCO_BUNDLE_MANIFEST_PATH).toBe('manifest.json');
     expect(VUCO_BUNDLE_PHOTOS_DIR).toBe('photos/');
+    expect(VUCO_BUNDLE_PHOTO_TYPES).toEqual({
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/heic': ['.heic'],
+      'image/webp': ['.webp'],
+    });
+    expect(VUCO_BUNDLE_PRODUCER_APP.source).toBe('^vuco(?::[a-z][a-z0-9-]*)?$');
   });
 });
 
@@ -197,7 +206,7 @@ describe('attachments and notes', () => {
 
   it('names the field of every malformed value, and lists all problems at once', () => {
     const { manifest, entries } = looseFixture();
-    manifest.producer = { app: 'vuco:run', version: '' };
+    manifest.producer = { app: 'walk', version: '' };
     manifest.kind = 'Snag List';
     manifest.createdAt = '2026-09-16T08:30';
     manifest.attachments[0] = { id: '', path: 'photos/snag-1.png', mediaType: 'application/pdf', byteLength: 0, sha256: 'ABC' };
@@ -205,12 +214,12 @@ describe('attachments and notes', () => {
     manifest.notes[0] = { id: 'note-1', text: 7, attachmentIds: 'photo-1' };
     manifest.notes.push('a note');
     expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual([
-      'producer.app: must be one of vuco, vuco:walk, not "vuco:run"',
-      'producer.version: must be a non-empty string',
+      'producer.app: must be "vuco" or "vuco:<name>" (a lowercase letter, then lowercase letters, digits and "-"), not "walk"',
+      'producer.version: must be a MAJOR.EPIC.STORY.BUILD version name such as "0.2.0.1", not ""',
       'kind: must be a lowercase kebab-case name such as "snag-list", not "Snag List"',
       'createdAt: must be an ISO 8601 date-time with seconds and a time zone, not "2026-09-16T08:30"',
       'attachments[0]: id must be a non-empty string',
-      'attachments[0]: mediaType "application/pdf" must be an image/* type',
+      'attachments[0]: mediaType "application/pdf" must be one of image/jpeg, image/png, image/heic, image/webp',
       'attachments[0]: byteLength must be a positive integer, not 0',
       'attachments[0]: sha256 must be 64 lowercase hex digits',
       'attachment "photo-2": byteLength must be a positive integer, not 1.5',
@@ -242,6 +251,178 @@ describe('attachments and notes', () => {
       'producer: must be an object with app and version',
       'attachments: must be an array',
       'notes: must be an array',
+    ]);
+  });
+});
+
+/** The fixture with its first photo replaced by `path` / `mediaType`, and the archive entry to match. */
+function withFirstPhoto(path: string, mediaType: string) {
+  const { manifest, entries } = createVucoBundleFixture();
+  const loose = manifest as unknown as Record<string, any>;
+  loose.attachments[0].path = path;
+  loose.attachments[0].mediaType = mediaType;
+  return { manifest: loose, entries: [{ ...entries[0], path }, entries[1]] };
+}
+
+describe('photo types (founder decision IG1)', () => {
+  it('rejects a media type that is not a photo type, such as SVG', () => {
+    const { manifest, entries } = withFirstPhoto('photos/snag-1.svg', 'image/svg+xml');
+    expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual([
+      'attachment "photo-1": mediaType "image/svg+xml" must be one of image/jpeg, image/png, image/heic, image/webp',
+    ]);
+  });
+
+  it('rejects a path whose extension does not match the media type', () => {
+    const { manifest, entries } = withFirstPhoto('photos/snag-1.png', 'image/jpeg');
+    expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual([
+      'attachment "photo-1": path "photos/snag-1.png" must end in .jpg or .jpeg for image/jpeg',
+    ]);
+  });
+
+  it('accepts every photo type with its extensions, ignoring letter case', () => {
+    const accepted: [string, string][] = [
+      ['photos/a.heic', 'image/heic'],
+      ['photos/a.HEIC', 'image/heic'],
+      ['photos/a.jpg', 'image/jpeg'],
+      ['photos/a.JPEG', 'image/jpeg'],
+      ['photos/a.png', 'image/png'],
+      ['photos/a.webp', 'image/webp'],
+    ];
+    for (const [path, mediaType] of accepted) {
+      const { manifest, entries } = withFirstPhoto(path, mediaType);
+      expect([path, validateVucoBundle(manifest, entries).ok]).toEqual([path, true]);
+    }
+  });
+});
+
+describe('producer (founder decision IG2)', () => {
+  it('accepts vuco and any vuco:<name>, and rejects other apps and malformed names', () => {
+    const verdicts = ['vuco', 'vuco:walk', 'vuco:x', 'vuco:site-check2', 'other', 'vuco:', 'vuco:Walk', 'vuco:1x', 'VUCO', 'vuco:walk:x', 7].map(
+      (app) => {
+        const { manifest, entries } = createVucoBundleFixture();
+        (manifest as unknown as Record<string, any>).producer.app = app;
+        return [app, validateVucoBundle(manifest, entries).ok];
+      },
+    );
+    expect(verdicts).toEqual([
+      ['vuco', true],
+      ['vuco:walk', true],
+      ['vuco:x', true],
+      ['vuco:site-check2', true],
+      ['other', false],
+      ['vuco:', false],
+      ['vuco:Walk', false],
+      ['vuco:1x', false],
+      ['VUCO', false],
+      ['vuco:walk:x', false],
+      [7, false],
+    ]);
+  });
+
+  it('requires producer.version to be a MAJOR.EPIC.STORY.BUILD version name', () => {
+    const verdicts = ['0.2.0.1', '1.0.0.12', 'banana', '0.2.0', '0.2.0.0', '0.02.0.1', 'v0.2.0.1', '', 201].map((version) => {
+      const { manifest, entries } = createVucoBundleFixture();
+      (manifest as unknown as Record<string, any>).producer.version = version;
+      return [version, errorsOf(validateVucoBundle(manifest, entries))];
+    });
+    const refusal = (version: unknown) => [
+      `producer.version: must be a MAJOR.EPIC.STORY.BUILD version name such as "0.2.0.1", not ${JSON.stringify(version)}`,
+    ];
+    expect(verdicts).toEqual([
+      ['0.2.0.1', []],
+      ['1.0.0.12', []],
+      ['banana', refusal('banana')],
+      ['0.2.0', refusal('0.2.0')],
+      ['0.2.0.0', refusal('0.2.0.0')],
+      ['0.02.0.1', refusal('0.02.0.1')],
+      ['v0.2.0.1', refusal('v0.2.0.1')],
+      ['', refusal('')],
+      [201, refusal(201)],
+    ]);
+  });
+});
+
+describe('createdAt is a date-time that exists (K8)', () => {
+  it('rejects impossible days, months, hours, minutes, seconds and offsets', () => {
+    const impossible = [
+      '2026-02-30T08:30:00Z',
+      '2026-04-31T08:30:00Z',
+      '2025-02-29T08:30:00Z',
+      '1900-02-29T08:30:00Z',
+      '2026-09-16T24:00:00Z',
+      '2026-00-10T08:30:00Z',
+      '2026-09-00T08:30:00Z',
+      '2026-09-16T23:60:00Z',
+      '2026-09-16T23:59:60Z',
+      '2026-09-16T08:30:00+15:00',
+      '2026-09-16T08:30:00+02:60',
+    ];
+    for (const createdAt of impossible) {
+      const { manifest, entries } = createVucoBundleFixture();
+      manifest.createdAt = createdAt;
+      expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual([
+        `createdAt: must be an ISO 8601 date-time with seconds and a time zone, not "${createdAt}"`,
+      ]);
+    }
+  });
+
+  it('accepts leap days in leap years and the edges of the ranges', () => {
+    const real = [
+      '2024-02-29T08:30:00Z',
+      '2000-02-29T23:59:59Z',
+      '2026-12-31T00:00:00.000Z',
+      '2026-09-16T08:30:00+14:00',
+      '2026-09-16T08:30:00-12:00',
+      '2026-09-16T08:30:00+05:45',
+    ];
+    for (const createdAt of real) {
+      const { manifest, entries } = createVucoBundleFixture();
+      manifest.createdAt = createdAt;
+      expect([createdAt, validateVucoBundle(manifest, entries).ok]).toEqual([createdAt, true]);
+    }
+  });
+});
+
+describe('paths and attachment lists (K9, K10)', () => {
+  it('rejects a path that differs from another only by letter case', () => {
+    const { manifest, entries } = createVucoBundleFixture();
+    manifest.attachments.push({ ...manifest.attachments[1], id: 'photo-3', path: 'photos/Snag-1.png' });
+    const archive = [...entries, { ...entries[1], path: 'photos/Snag-1.png' }];
+    expect(errorsOf(validateVucoBundle(manifest, archive))).toEqual([
+      'attachment "photo-3": path "photos/Snag-1.png" differs from "photos/snag-1.png" only by letter case',
+    ]);
+  });
+
+  it('rejects a file name longer than 255 characters or ending in a dot', () => {
+    const long = `photos/${'a'.repeat(252)}.png`;
+    const longest = `photos/${'a'.repeat(251)}.png`;
+    const cases: [string, string[]][] = [
+      [long, [`attachment "photo-1": path "${long}" has a file name longer than 255 characters`]],
+      ['photos/snag-1.png.', ['attachment "photo-1": path "photos/snag-1.png." has a file name that ends in a dot']],
+      [longest, []],
+    ];
+    for (const [path, errors] of cases) {
+      const { manifest, entries } = withFirstPhoto(path, 'image/png');
+      expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual(errors);
+    }
+  });
+
+  it('compares entry names exactly as stored: no ./ prefix, no backslashes, same case', () => {
+    for (const stored of ['./photos/snag-1.png', 'photos\\snag-1.png', 'photos/SNAG-1.png', '/photos/snag-1.png']) {
+      const { manifest, entries } = createVucoBundleFixture();
+      const archive = [{ ...entries[0], path: stored }, entries[1]];
+      expect([stored, errorsOf(validateVucoBundle(manifest, archive))]).toEqual([
+        stored,
+        ['attachment "photo-1": photos/snag-1.png is missing from the archive'],
+      ]);
+    }
+  });
+
+  it('rejects a note that lists the same attachment twice', () => {
+    const { manifest, entries } = createVucoBundleFixture();
+    manifest.notes[0].attachmentIds = ['photo-1', 'photo-2', 'photo-1'];
+    expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual([
+      'note "note-1": attachmentIds lists "photo-1" more than once',
     ]);
   });
 });

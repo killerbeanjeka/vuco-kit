@@ -76,6 +76,17 @@ jobs:
       - name: Every dual-mode colour token in src is paired with its dark variant
         run: node tokens/check-dark-pairing.mjs --src src --allowlist dark-pairing-allowlist.json
 
+      # Consumers scan only src/ui for Tailwind classes, so a styled kit file anywhere else would render
+      # unstyled in every app, with no error.
+      - name: Styled code lives only in src/ui, the one kit folder consumers scan for classes
+        run: |
+          offenders="$(find src -type f -not -path 'src/ui/*' -exec grep -l 'className' {} + || true)"
+          if [ -n "$offenders" ]; then
+            echo "::error::className outside src/ui, where no consumer scans for Tailwind classes: $offenders"
+            exit 1
+          fi
+          echo "no className outside src/ui"
+
       # Consumers import these files by path from the installed package, which holds only what npm packs.
       - name: The package ships the fonts, token outputs, UI primitives, i18n, base configs and family contracts, and nothing else
         run: |

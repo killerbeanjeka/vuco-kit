@@ -10,6 +10,7 @@ In this order:
    `npm ci` · `npm run typecheck` · `npm run lint` · `npm test` ·
    `node tokens/generate-tokens.mjs --check --brand vuco` · `node tokens/check-tnum.mjs` ·
    `node tokens/check-dark-pairing.mjs --src src --allowlist dark-pairing-allowlist.json` ·
+   the `className` guard in `kit-ci.yml` (no `className` under `src/` outside `src/ui/`) ·
    `npm pack --dry-run --json` through the pack guard in `kit-ci.yml` (every required file is
    listed, nothing outside the published layout, no test file)
 3. **Bump** — `npm version --no-git-tag-version <x.y.z>` (semver; keeps `package-lock.json` in
@@ -51,7 +52,7 @@ In this order:
   credentials, no real names or customer data in fixtures. `secret-scan` runs on every push.
 - A new file under `src/` joins the `required` list and the `layout` patterns of the pack guard in
   `kit-ci.yml`. Styled components go under `src/ui/` only: apps scan that folder, and nothing else in
-  the kit, for Tailwind classes. Modules that Node runs from `node_modules` are `.mjs` with JSDoc
+  the kit, for Tailwind classes, and `kit-ci` fails on `className` anywhere else under `src/`. Modules that Node runs from `node_modules` are `.mjs` with JSDoc
   types. The kit takes no runtime `dependencies`.
 - Token changes: edit `tokens/base.tokens.yaml` or `tokens/brands/<brand>.yaml`, run
   `node tokens/generate-tokens.mjs --brand <brand>`, re-verify the contrast table in the consuming

@@ -25,7 +25,7 @@ Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says w
 | `tokens/check-tnum.mjs` | Verifies tabular figures for the money role; writes `font-verdict.json`. |
 | `tokens/check-dark-pairing.mjs` | CLI for consumers: every dual-mode colour token is used with its `-dark` twin. |
 | `src/ui/<Name>.tsx` | The cross-app UI primitives — `ButtonPrimary`, `ButtonSecondary`, `Input`, `Sheet`, `OptionRow`, `ActionRow`, `ActionChip`, `ChoiceChip`, `Banner`, `ScreenHeader`, `ScreenFooter`, `SegmentedTabs`, `ExplainerCard`, `icons`, `bottomBarSpace` — as TypeScript source styled with the token classes. Contracts: [below](#primitive-contracts). |
-| `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage()`; `en.json` and `de.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels). Sheet's backdrop still has a fixed English "Close" accessibility label, a known gap. |
+| `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage()`; `en.json` and `de.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels). Sheet's backdrop label is not among them yet: see [known gaps](#known-gaps). |
 | `src/packs/` | Pack tooling: `validatePacks.mjs` (schema and language-coverage validator), `countryLiteralLint.mjs` (the country-literal lint CLI), `packCopy.ts` (the drift check for a checked-in copy of pack data). No schema, no data. |
 | `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version. The policy: [src/versioning/README.md](src/versioning/README.md). |
 | `src/vuco-file/` | The `.vuco` hand-over bundle: manifest types, a validator and synthetic fixtures. The format: [src/vuco-file/README.md](src/vuco-file/README.md). |
@@ -87,7 +87,8 @@ compiler on. Nothing in the kit relies on it (accepted in vuco's Story 15.2).
 
 Every primitive follows the rules in [AGENTS.md](AGENTS.md#ui-primitives): token classes only,
 minimum heights that grow with the font scale, touch targets of at least 48 dp, and an accessibility
-role and state on every control.
+role and state on every control. Two known gaps break these rules today; they are listed
+[below](#known-gaps).
 
 - `ButtonPrimary` — the full-width pill, one per screen. While pending it shows progress text, never
   a spinner alone; disabled is `ink-disabled` on `surface-sunken`.
@@ -128,9 +129,18 @@ role and state on every control.
   each tab can show a count badge.
 - `ExplainerCard` — content for an explainer: header icon, title, benefit rows, a primary button,
   and an optional secondary link and disclosure. The consumer supplies the container, such as a
-  `Sheet`.
+  `Sheet`. The secondary link's touch target is 44 dp (see known gaps).
 - `icons` — the single icon family (`IconName`). Icons take token classes, so no colour value is
   copied out of the theme.
+
+### Known gaps
+
+Both are recorded in vuco's backlog and wait for a kit release that may change runtime behaviour:
+
+- `Sheet`'s backdrop has a fixed English accessibility label, "Close", so screen readers read English
+  in every app language. The `kit` namespace already holds the translated word.
+- `ExplainerCard`'s secondary link has a 44 dp touch target (`min-h-11`, no hit slop), below the 48 dp
+  floor the other primitives keep.
 
 ## Family contracts
 
@@ -140,16 +150,19 @@ the same way. Each app keeps its own data: pack schema and pack contents, string
 ### Pack tooling (`src/packs/`)
 
 A pack lives at `<packs>/<id>/pack.json`, where `<id>` has two lowercase letters. It has `packId`
-equal to `<id>`, plus `version`, `schemaVersion` and `languages[]`. A translated string is any object
-whose keys are all two-letter language codes and whose values are strings. Everything else in a pack,
-and its schema, belongs to the app.
+equal to `<id>`, a non-empty `version`, a `schemaVersion`, and `languages[]` (two-letter codes, at
+least one). The validator checks these itself, whatever the app's schema requires. A translated string
+is any object whose keys are all two-letter language codes and whose values are strings. Everything
+else in a pack, and its schema, belongs to the app.
 
 - **Validator.** `runPackValidation({ packsDir, schemaFile, ajv: { Ajv2020, addFormats }, checks })`
   compiles the app's JSON Schema (2020-12, strict, all errors, formats), validates every pack, checks
   that `packId` matches its folder and that every translated string covers every language in
-  `languages[]`, runs the app's own `checks`, prints one line per pack, and returns 0, 1, or 2 for an
-  unreadable schema or folder. The app passes in ajv 8 and ajv-formats 3, which it already installs;
-  the kit declares neither.
+  `languages[]`, runs the app's own `checks`, and prints one line per pack. It returns 0, 1, or 2 when
+  the schema or folder cannot be read or compiled (a misspelled schema keyword fails strict mode), the
+  ajv passed in is not usable, or an app check throws or returns anything but a list of lines. The
+  app passes in ajv 8 and ajv-formats 3, which it already installs, exactly as it imports them; the kit
+  declares neither.
 
   ```js
   import Ajv2020 from 'ajv/dist/2020.js';
@@ -161,11 +174,16 @@ and its schema, belongs to the app.
 
 - **Country-literal lint.** `node node_modules/@vuco/kit/src/packs/countryLiteralLint.mjs --root <dir> --ext .cs
   [--allowlist <file.json>] [--repo-root <dir>] [--packs <dir>] [--tokens <module>]` reports quoted ISO
-  3166-1 codes, quoted pack ids, locale literals, "ISO 3166" mentions and the app's pack tokens as
-  `[class] path:line token="…"`. It exits 0 when clean, 1 on findings or when it scanned no file, and 2
-  on bad arguments or a malformed allowlist. The `--tokens` module's default export returns
-  `[{ token, spellings }]`. An app wraps it with its defaults by importing `main(argv)`. The header of
-  the file documents every flag and the allowlist format.
+  3166-1 codes, quoted pack ids and locale literals (between `"`, `'` or backticks, the same quote on
+  both sides), "ISO 3166" mentions and the app's pack tokens as `[class] path:line token="…"`.
+  - It exits 0 when clean, and 1 on findings or when it scanned no file.
+  - It exits 2 on bad arguments, a malformed allowlist, a `--packs` folder without a two-letter pack
+    folder, a `--tokens` module that returns no tokens, or a file or folder under `--root` it cannot
+    read.
+  - Every path it prints is relative to `--repo-root`, or in full when outside it.
+  - The `--tokens` module's default export returns `[{ token, spellings }]`.
+  - An app wraps it with its defaults by importing `main(argv)`. The header of the file documents every
+    flag and the allowlist format.
 - **Copy drift.** A test for each checked-in copy of pack data calls
   `assertPackCopy(pack, copy, { '<copy path>': '<pack path>' })` from `@vuco/kit/src/packs/packCopy`.
   Paths are dot-separated keys; `name[field=value]` selects the one array element whose `field` is
@@ -175,16 +193,19 @@ and its schema, belongs to the app.
 
 ### App versions (`src/versioning/`)
 
-The version name is `MAJOR.EPIC.STORY.BUILD`; EPIC counts finished epics, not an epic's number in the
-plan. `bumpAppVersion(current, 'fix' | 'story' | 'epic')` returns the next name and throws on anything
-else; MAJOR moves only by hand. Rules, EAS build numbers and the iOS limit:
+The version name is `MAJOR.EPIC.STORY.BUILD`; EPIC counts the epics finished since the app adopted the
+scheme, not an epic's number in the plan, and BUILD is at least 1.
+`bumpAppVersion(current, 'fix' | 'story' | 'epic')` returns the next name and throws on anything else;
+MAJOR moves only by hand. Rules, EAS build numbers and the iOS limit:
 [src/versioning/README.md](src/versioning/README.md).
 
 ### The `.vuco` hand-over bundle (`src/vuco-file/`)
 
-A ZIP file with `manifest.json` at the root and the photos under `photos/`, so one app can hand a
-piece of work to another. `validateVucoBundle(manifest, entries)` checks a parsed manifest against the
-archive entries the app read. The kit never opens, writes, hashes or sends a file. Layout, fields and
+A ZIP file with `manifest.json` at the root and the photos (JPEG, PNG, HEIC or WebP) under `photos/`,
+so one app can hand a piece of work to another. Any family app (`vuco` or `vuco:<name>`) may write one;
+the importing app decides which producers and kinds it opens. `validateVucoBundle(manifest, entries)`
+checks a parsed manifest against the archive entries the app read, with entry names exactly as stored.
+The kit never opens, writes, hashes or sends a file. Layout, fields and
 versioning: [src/vuco-file/README.md](src/vuco-file/README.md).
 
 ## Develop

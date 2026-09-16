@@ -11,10 +11,21 @@ test("fix, story and epic bump 0.1.10.2 by the project rules", () => {
   assert.deepEqual(BUMP_KINDS, ["fix", "story", "epic"]);
 });
 
-test("MAJOR never moves, and zero segments are valid", () => {
-  assert.equal(bumpAppVersion("3.0.0.0", "fix"), "3.0.0.1");
-  assert.equal(bumpAppVersion("3.0.0.0", "story"), "3.0.1.1");
+test("MAJOR never moves, and MAJOR, EPIC and STORY may be 0", () => {
+  assert.equal(bumpAppVersion("3.0.0.1", "fix"), "3.0.0.2");
+  assert.equal(bumpAppVersion("3.0.0.1", "story"), "3.0.1.1");
   assert.equal(bumpAppVersion("3.9.9.9", "epic"), "3.10.0.1");
+  assert.deepEqual(parseAppVersion("0.0.0.1"), { major: 0, epic: 0, story: 0, build: 1 });
+});
+
+test("BUILD 0 is not a version name: BUILD starts at 1", () => {
+  for (const text of ["0.1.1.0", "0.0.0.0", "1.2.3.0"]) {
+    assert.throws(() => parseAppVersion(text), {
+      message: `invalid app version "${text}": expected MAJOR.EPIC.STORY.BUILD, four non-negative integers without leading zeros and a BUILD of at least 1`,
+    });
+    assert.throws(() => bumpAppVersion(text, "fix"), /BUILD of at least 1/);
+  }
+  assert.throws(() => formatAppVersion({ major: 0, epic: 1, story: 1, build: 0 }), /BUILD of at least 1/);
 });
 
 test("an invalid version name throws and names the input", () => {
@@ -44,7 +55,7 @@ test("the version is checked before the kind", () => {
 test("parse and format round-trip", () => {
   assert.deepEqual(parseAppVersion("0.1.10.2"), { major: 0, epic: 1, story: 10, build: 2 });
   assert.equal(formatAppVersion({ major: 12, epic: 0, story: 105, build: 3 }), "12.0.105.3");
-  for (const text of ["0.0.0.0", "1.22.333.4444"]) assert.equal(formatAppVersion(parseAppVersion(text)), text);
+  for (const text of ["0.0.0.1", "1.22.333.4444"]) assert.equal(formatAppVersion(parseAppVersion(text)), text);
 });
 
 test("format refuses segments that are not non-negative integers", () => {
