@@ -1,8 +1,8 @@
 {
   "name": "@vuco/kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Shared layer of the vuco app family: design tokens, their generator and checks, fonts, UI primitives, the i18n setup and base lint and TypeScript configs.",
+  "description": "Shared layer of the vuco app family: design tokens, their generator and checks, fonts, UI primitives, the i18n setup, base lint and TypeScript configs, and the family contracts (pack tooling, the .vuco hand-over bundle, the app version helper).",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
@@ -28,7 +28,7 @@
     "@formatjs/intl-locale": "^5.3.10",
     "@formatjs/intl-pluralrules": "^6.3.13",
     "@types/jest": "^29.5.14",
-    "eslint": "^9.0.0",
+    "eslint": "^9.22.0",
     "eslint-config-expo": "~57.0.0",
     "expo": "~57.0.6",
     "expo-localization": "~57.0.1",
@@ -68,6 +68,8 @@
     "@types/jest": "29.5.14",
     "@types/node": "^22.20.2",
     "@types/react": "19.2.17",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
     "babel-preset-expo": "57.0.3",
     "eslint": "9.39.5",
     "eslint-config-expo": "57.0.0",

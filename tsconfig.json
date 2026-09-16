@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["tokens/*.mjs", "test/*.mjs", "eslint.config.mjs", "types/*.d.ts"]
+  "include": ["tokens/*.mjs", "src/**/*.mjs", "test/**/*.mjs", "eslint.config.mjs", "types/*.d.ts"]
 }
