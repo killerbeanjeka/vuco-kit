@@ -136,8 +136,8 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
       </BottomBarSpaceProvider>,
     );
     // Fallback before any measurement — always a positive clearance, never 0: the default bar and the
-    // + button above it (72 + 12 + 56) plus 8 dp.
-    expect(screen.getByTestId('clearance')).toHaveTextContent('148');
+    // + button above it (72 + 12 + 64) plus 8 dp.
+    expect(screen.getByTestId('clearance')).toHaveTextContent('156');
     // A measured bar taller than the fallback wins (160 + 8 dp breathing room).
     await fireEvent.press(screen.getByTestId('report-160'));
     expect(screen.getByTestId('clearance')).toHaveTextContent('168');
@@ -158,7 +158,7 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
       </BottomBarSpaceProvider>,
     );
     // Before any layout fires, the consumer sees the fallback (onLayout does not fire in RNTL by itself).
-    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('148');
+    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('156');
     // Fire the layout event the native side raises on the bar wrapper — the ONLY path that carries the
     // measured overlay height into the clearance (BottomBar.onLayout → reportHeight → provider).
     await act(async () => {
@@ -166,9 +166,9 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
         nativeEvent: { layout: { height: 150, width: 320, x: 0, y: 0 } },
       });
     });
-    // 150 measured + the 12 dp gap + the 56 dp button + 8 breathing room reaches the consumer. Reading
-    // layout.width instead of .height, or dropping the onLayout binding on the bar, leaves this at 148.
-    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('226');
+    // 150 measured + the 12 dp gap + the 64 dp button + 8 breathing room reaches the consumer. Reading
+    // layout.width instead of .height, or dropping the onLayout binding on the bar, leaves this at 156.
+    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('234');
   });
 
   it('clears the + button: the clearance reaches above the FAB as the bar renders it', async () => {
@@ -193,7 +193,7 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
       const fabBottom = StyleSheet.flatten(fab.props.style).bottom as number;
       const fabSize = Number(/(?:^|\s)h-\[(\d+)px\](?:\s|$)/.exec(fab.props.className)?.[1]);
       expect(fabBottom).toBe(height + 12);
-      expect(fabSize).toBe(56);
+      expect(fabSize).toBe(64);
       expect(Number(screen.getByTestId('consumer-clearance').props.children)).toBeGreaterThanOrEqual(fabBottom + fabSize);
     }
   });

@@ -123,13 +123,13 @@ role and state on every control.
   accessibility label), pops a pushed screen and dismisses a modal, and falls back to
   `router.replace(fallback)` when there is nothing to go back to.
 - `ScreenFooter` — the bottom navigation: an edge-to-edge bar whose `items` share the width, with the
-  active one highlighted by shape as well as colour, labels always shown, and a floating 56 dp
+  active one highlighted by shape as well as colour, labels always shown, and a floating 64 dp
   `primaryAction` button 12 dp above the bar, guarded against double taps. It overlays the screen and
   publishes its measured height up to the top of that button, so right-aligned content on a tab
   screen's last row scrolls clear of the button too.
 - `bottomBarSpace` — `BottomBarSpaceProvider` and two hooks that share the bar's measured height
   (`useReportBottomBarHeight`, `useBottomBarClearance`), so tab screens pad their last control clear
-  of it. The clearance adds 8 dp, never shrinks, and starts at 148 dp: `ScreenFooter`'s default bar
+  of it. The clearance adds 8 dp, never shrinks, and starts at 156 dp: `ScreenFooter`'s default bar
   and its button.
 - `SegmentedTabs` — an in-screen tab bar: the selected tab has an underline, never colour alone, and
   each tab can show a count badge.

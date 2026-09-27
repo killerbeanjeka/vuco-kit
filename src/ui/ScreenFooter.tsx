@@ -39,10 +39,11 @@ interface FooterItem {
 // survive the footer re-mounting when the keyboard hides.
 let primaryActionTapAt = 0;
 
-// The FAB's geometry, which the clearance adds above the bar. The size is spelled out in px because
-// NativeWind's rem is 14 on native: the former `h-16` was 56 dp on devices, and stays 56.
+// The FAB's geometry, which the clearance adds above the bar. The size is spelled out in px, the 64 px
+// circle of the design (vuco DESIGN.md): NativeWind's rem is 14 on native, so the former `h-16` was
+// only 56 dp on devices.
 const FAB_GAP = 12;
-const FAB_SIZE = 56;
+const FAB_SIZE = 64;
 
 function DestinationTab({
   name,
@@ -123,14 +124,14 @@ export function ScreenFooter({ state, navigation, items, primaryAction }: Screen
   return (
     <>
       {/* Floating New-job FAB (brand mock): orange = capture, bottom-right, floating just above the
-          bar. Same silhouette as the Extra-Work FAB (a 56 dp orange circle, dark glyph both modes). */}
+          bar. Same silhouette as the Extra-Work FAB (a 64 dp orange circle, dark glyph both modes). */}
       <Pressable
         testID="tab-new"
         accessibilityRole="button"
         accessibilityLabel={primaryAction.label}
         onPress={pressPrimaryAction}
         style={{ position: 'absolute', right: 16, bottom: barHeight + FAB_GAP, zIndex: 10, elevation: 8 }}
-        className="h-[56px] w-[56px] items-center justify-center rounded-full border border-on-accent/10 bg-accent active:opacity-90 dark:border-on-accent-dark/10 dark:bg-accent-dark"
+        className="h-[64px] w-[64px] items-center justify-center rounded-full border border-on-accent/10 bg-accent active:opacity-90 dark:border-on-accent-dark/10 dark:bg-accent-dark"
       >
         <Icon name="plus" size={30} className="text-on-accent dark:text-on-accent-dark" />
       </Pressable>

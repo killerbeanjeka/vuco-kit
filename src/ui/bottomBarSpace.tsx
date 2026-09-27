@@ -7,8 +7,8 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 // bar MEASURES its occupied zone (pill + margins + safe-area) via onLayout and
 // publishes it here, up to the top of the floating + button above it; screens
 // pad by the measured value. The fallback covers ScreenFooter's first frame:
-// its default 72 dp bar, the 12 dp gap and the 56 dp button, plus 8 dp.
-const FALLBACK_CLEARANCE = 148;
+// its default 72 dp bar, the 12 dp gap and the 64 dp button, plus 8 dp.
+const FALLBACK_CLEARANCE = 156;
 
 const ClearanceContext = createContext(FALLBACK_CLEARANCE);
 const SetClearanceContext = createContext<(height: number) => void>(() => {});

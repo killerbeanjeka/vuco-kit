@@ -28,9 +28,9 @@ validator and `ScreenFooter`'s clearance change behaviour; nothing under `tokens
   `draw`. `ICON_NAMES` lists every name, `IconName` derives from it, and a test checks that each is a
   MaterialCommunityIcons glyph.
 - `ScreenFooter` reports its occupied zone up to the top of the floating button (the bar, the 12 dp
-  gap and the 56 dp button), so a tab screen's last row, right-aligned content included, scrolls clear
-  of the button; the fallback clearance is 148 dp. The button's `h-16` is spelled `h-[56px]`, its size
-  on devices, so the button and the clearance agree.
+  gap and the 64 dp button), so a tab screen's last row, right-aligned content included, scrolls clear
+  of the button; the fallback clearance is 156 dp. The button is `h-[64px]`, the 64 px circle of the
+  design: its `h-16` was 56 dp on devices, where NativeWind's rem is 14, so it grows by 8 dp.
 - README: "Use in an app" documents the theme module and the font files; "Known gaps" is gone, both
   gaps closed.
 - Tests cover each change.
