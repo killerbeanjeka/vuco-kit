@@ -12,7 +12,9 @@ In this order:
    `node tokens/check-dark-pairing.mjs --src src --allowlist dark-pairing-allowlist.json` ·
    the `className` guard in `kit-ci.yml` (no `className` under `src/` outside `src/ui/`) ·
    `npm pack --dry-run --json` through the pack guard in `kit-ci.yml` (every required file is
-   listed, nothing outside the published layout, no test file)
+   listed, nothing outside the published layout, no test file) ·
+   `node test/consumer/scratchApp.mjs` (the packed kit installs into a scratch app with its peers,
+   every path the published docs name resolves, and the Node modules and configs load)
 3. **Bump** — `npm version --no-git-tag-version <x.y.z>` (semver; keeps `package-lock.json` in
    step), and rename `## Unreleased` to `## x.y.z — YYYY-MM-DD`.
 4. **Commit, push `master`, wait for green** — the founder pushes `master`; wait until `kit-ci` is
@@ -20,8 +22,15 @@ In this order:
 5. **Tag, push the tag** — `git tag vX.Y.Z` on that commit, and the founder pushes the tag. `kit-ci`
    runs again on the tag and fails when the tag is not `v` + the `package.json` version. vuco's
    `kit-pin` check refuses a tag whose commit has no green `kit-ci` run.
-6. **Consumer bump, the same day** — in vuco first, then every other consumer:
-   - install the new tag explicitly in every folder that pins the kit. In vuco that is `apps/mobile`
+6. **Consumer bump, the same day** — vuco first, then vuco:walk. Each consumer pins the kit in two
+   folders, `apps/mobile` and `packs`, and names the pin on the `kit:` line of its DESIGN.md:
+   - vuco (`killerbeanjeka/vuco-app`):
+     `_bmad-output/planning-artifacts/ux-designs/ux-vuco-2026-07-15/DESIGN.md`;
+   - vuco:walk (`killerbeanjeka/vuco-walk`):
+     `_bmad-output/planning-artifacts/ux-designs/ux-vuco-walk-2026-09-16/DESIGN.md` (under `tokens:`).
+
+   In each consumer:
+   - install the new tag explicitly in both folders: `apps/mobile`
      (`npm install "@vuco/kit@github:killerbeanjeka/vuco-kit#vX.Y.Z"`) and `packs`
      (`npm install -D "@vuco/kit@github:killerbeanjeka/vuco-kit#vX.Y.Z"`). Do not just edit the
      `#vX.Y.Z` in `package.json` and run a plain `npm install`: npm keeps the commit the lockfile
@@ -32,8 +41,8 @@ In this order:
    - set the same pin on the `kit:` line of DESIGN.md's frontmatter. vuco's `kit-pin` check compares
      it and the `packs` pin with `apps/mobile/package.json`, and `pack-lint` compares the `packs` pin
      and the installed kit version;
-   - run `npm run sync-kit` in `apps/mobile`; when it changes a landing copy, bump the landing `?v=`
-     tokens (`apps/landing/README.md`, "Kit bumps");
+   - vuco only: run `npm run sync-kit` in `apps/mobile`; when it changes a landing copy, bump the
+     landing `?v=` tokens (`apps/landing/README.md`, "Kit bumps");
    - run `npx tsc --noEmit`, `npx expo lint` and `npx jest --ci` in `apps/mobile`, and
      `node lint/pack-lint.test.mjs`, `node lint/pack-lint.mjs` and `node validate-pack.mjs` in
      `packs` — kit source compiles and runs inside the app and its tooling;

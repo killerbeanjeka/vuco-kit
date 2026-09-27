@@ -25,7 +25,7 @@ Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says w
 | `tokens/check-tnum.mjs` | Verifies tabular figures for the money role; writes `font-verdict.json`. |
 | `tokens/check-dark-pairing.mjs` | CLI for consumers: every dual-mode colour token is used with its `-dark` twin. |
 | `src/ui/<Name>.tsx` | The cross-app UI primitives — `ButtonPrimary`, `ButtonSecondary`, `Input`, `Sheet`, `OptionRow`, `ActionRow`, `ActionChip`, `ChoiceChip`, `Banner`, `ScreenHeader`, `ScreenFooter`, `SegmentedTabs`, `ExplainerCard`, `icons`, `bottomBarSpace` — as TypeScript source styled with the token classes. Contracts: [below](#primitive-contracts). |
-| `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage()`; `en.json` and `de.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels). Sheet's backdrop label is not among them yet: see [known gaps](#known-gaps). |
+| `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage()`; `en.json` and `de.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels and Sheet's backdrop label). |
 | `src/packs/` | Pack tooling: `validatePacks.mjs` (schema and language-coverage validator), `countryLiteralLint.mjs` (the country-literal lint CLI), `packCopy.ts` (the drift check for a checked-in copy of pack data). No schema, no data. |
 | `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version. The policy: [src/versioning/README.md](src/versioning/README.md). |
 | `src/vuco-file/` | The `.vuco` hand-over bundle: manifest types, a validator and synthetic fixtures. The format: [src/vuco-file/README.md](src/vuco-file/README.md). |
@@ -52,8 +52,12 @@ hooks and types included. `export *` never re-exports a default export, and kit 
 The app provides the peer dependencies at the versions in `package.json` (the Expo SDK 57 set). The
 optional ones — `eslint`, `eslint-config-expo`, `expo`, `typescript`, `@types/jest` — are what
 `config/*` needs; an app that does not extend the configs can leave them out. The app wires the kit
-in five places:
+in six places:
 
+- **Theme and fonts** — `tailwind.config.js` extends its theme with
+  `require('@vuco/kit/tokens/out/vuco/nativewind-theme.cjs').theme` (the module's `vuco` export holds
+  the component tokens), and the `expo-font` plugin in `app.json` lists the five weights,
+  `./node_modules/@vuco/kit/tokens/fonts/PlusJakartaSans-<Weight>.ttf`.
 - **NativeWind** — `tailwind.config.js` scans the kit's `src/ui/` as well, or every class that only
   kit source uses renders unstyled, with no error:
   `content: ['./src/**/*.{ts,tsx}', './node_modules/@vuco/kit/src/ui/**/*.{ts,tsx}']`.
@@ -87,8 +91,7 @@ compiler on. Nothing in the kit relies on it (accepted in vuco's Story 15.2).
 
 Every primitive follows the rules in [AGENTS.md](AGENTS.md#ui-primitives): token classes only,
 minimum heights that grow with the font scale, touch targets of at least 48 dp, and an accessibility
-role and state on every control. Two known gaps break these rules today; they are listed
-[below](#known-gaps).
+role and state on every control.
 
 - `ButtonPrimary` — the full-width pill, one per screen. While pending it shows progress text, never
   a spinner alone; disabled is `ink-disabled` on `surface-sunken`.
@@ -100,8 +103,9 @@ role and state on every control. Two known gaps break these rules today; they ar
   an inline error turns the border `status-overdue` and shows text, never colour alone.
 - `Sheet` — the bottom sheet on `surface-raised` with top radius xl. Light mode floats on a soft
   shadow; dark mode has no shadow and a `border-hairline-dark` top edge instead. It keeps clear of the
-  bottom safe area and the keyboard. `SHEET_SCRIM_CLASSES` and `SHEET_PANEL_CLASSES` carry the same
-  chrome for route-based sheets.
+  bottom safe area and the keyboard. The backdrop closes it; its accessibility label is the `kit`
+  namespace's `close`, so it follows the app language. `SHEET_SCRIM_CLASSES` and
+  `SHEET_PANEL_CLASSES` carry the same chrome for route-based sheets.
 - `OptionRow` — the selection row of a picker: selected means a primary tint, a `link` label and a
   check mark (never colour alone), with radio semantics for screen readers. `grouped` rows sit flat in
   one card, with `divider` on every row but the first.
@@ -119,28 +123,22 @@ role and state on every control. Two known gaps break these rules today; they ar
   accessibility label), pops a pushed screen and dismisses a modal, and falls back to
   `router.replace(fallback)` when there is nothing to go back to.
 - `ScreenFooter` — the bottom navigation: an edge-to-edge bar whose `items` share the width, with the
-  active one highlighted by shape as well as colour, labels always shown, and a floating
-  `primaryAction` button guarded against double taps. It overlays the screen and publishes its
-  measured height.
+  active one highlighted by shape as well as colour, labels always shown, and a floating 56 dp
+  `primaryAction` button 12 dp above the bar, guarded against double taps. It overlays the screen and
+  publishes its measured height up to the top of that button, so right-aligned content on a tab
+  screen's last row scrolls clear of the button too.
 - `bottomBarSpace` — `BottomBarSpaceProvider` and two hooks that share the bar's measured height
   (`useReportBottomBarHeight`, `useBottomBarClearance`), so tab screens pad their last control clear
-  of it.
+  of it. The clearance adds 8 dp, never shrinks, and starts at 148 dp: `ScreenFooter`'s default bar
+  and its button.
 - `SegmentedTabs` — an in-screen tab bar: the selected tab has an underline, never colour alone, and
   each tab can show a count badge.
 - `ExplainerCard` — content for an explainer: header icon, title, benefit rows, a primary button,
   and an optional secondary link and disclosure. The consumer supplies the container, such as a
-  `Sheet`. The secondary link's touch target is 44 dp (see known gaps).
-- `icons` — the single icon family (`IconName`). Icons take token classes, so no colour value is
-  copied out of the theme.
-
-### Known gaps
-
-Both are recorded in vuco's backlog and wait for a kit release that may change runtime behaviour:
-
-- `Sheet`'s backdrop has a fixed English accessibility label, "Close", so screen readers read English
-  in every app language. The `kit` namespace already holds the translated word.
-- `ExplainerCard`'s secondary link has a 44 dp touch target (`min-h-11`, no hit slop), below the 48 dp
-  floor the other primitives keep.
+  `Sheet`. The secondary link's touch target is at least 48 dp (`min-h-[48px]`).
+- `icons` — the single icon family: `ICON_NAMES` lists the MaterialCommunityIcons glyphs apps may
+  use, and `IconName` is their union. Icons take token classes, so no colour value is copied out of
+  the theme.
 
 ## Family contracts
 
@@ -149,15 +147,20 @@ the same way. Each app keeps its own data: pack schema and pack contents, string
 
 ### Pack tooling (`src/packs/`)
 
-A pack lives at `<packs>/<id>/pack.json`, where `<id>` has two lowercase letters. It has `packId`
-equal to `<id>`, a non-empty `version`, a `schemaVersion`, and `languages[]` (two-letter codes, at
-least one). The validator checks these itself, whatever the app's schema requires. A translated string
-is any object whose keys are all two-letter language codes and whose values are strings. Everything
-else in a pack, and its schema, belongs to the app.
+A pack lives at `<packs>/<id>/pack.json`, where `<id>` has two lowercase letters; a `pack.json` in a
+folder with any other name fails the run instead of going unchecked. A pack has `packId` equal to
+`<id>`, a non-empty `version`, a `schemaVersion`, and `languages[]` (two-letter codes, at least one).
+The validator checks these itself, whatever the app's schema requires. A translated string is an
+object whose keys are all language tags (`de`, or a regional `de-AT`) and whose values are all strings
+or `null`, with at least one key in `languages[]` (or a regional form of one). Each declared language
+needs a non-blank text, and a key the pack does not declare is reported. A map keyed by lowercase
+country codes that are not declared languages, such as `{ "at": …, "ch": … }`, is data, not a
+translation; key a per-country map by uppercase ISO 3166 codes (`{ "AT": … }`), which never match.
+Everything else in a pack, and its schema, belongs to the app.
 
 - **Validator.** `runPackValidation({ packsDir, schemaFile, ajv: { Ajv2020, addFormats }, checks })`
   compiles the app's JSON Schema (2020-12, strict, all errors, formats), validates every pack, checks
-  that `packId` matches its folder and that every translated string covers every language in
+  that `packId` matches its folder and that every translated string covers exactly the languages in
   `languages[]`, runs the app's own `checks`, and prints one line per pack. It returns 0, 1, or 2 when
   the schema or folder cannot be read or compiled (a misspelled schema keyword fails strict mode), the
   ajv passed in is not usable, or an app check throws or returns anything but a list of lines. The
@@ -218,11 +221,14 @@ npm run typecheck && npm run lint && npm test
 node tokens/generate-tokens.mjs --check --brand vuco
 node tokens/check-tnum.mjs
 node tokens/check-dark-pairing.mjs --src src --allowlist dark-pairing-allowlist.json
+node test/consumer/scratchApp.mjs
 ```
 
-`npm test` runs the node:test suites (token tooling, pack validator and lint, version helper) and the
-Jest suites (primitives, i18n factory, copy-drift helper, `.vuco` validator), on the stack vuco's app
-tests use.
+`npm test` runs the node:test suites (token tooling, pack validator and lint, version helper, the
+documented consumer paths) and the Jest suites (primitives, i18n factory, copy-drift helper, `.vuco`
+validator), on the stack vuco's app tests use. `test/consumer/scratchApp.mjs` installs the packed kit
+into a scratch app with every peer, as an app installs a tag, resolves every path the published docs
+name, and loads the Node modules and configs among them; `kit-ci` runs it too.
 
 To try a change in an app before its tag exists, run `npm pack` here and
 `npm install --no-save <path-to-tgz>` in the app, then restart Metro with `-c`. Never `npm link` the

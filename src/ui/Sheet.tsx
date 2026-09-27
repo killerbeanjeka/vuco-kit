@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +24,8 @@ export const SHEET_PANEL_CLASSES =
 // (Story 2.2 sign-in — closing the 2.1 deferred-work item).
 export function Sheet({ visible, onClose, children, testID }: SheetProps) {
   const insets = useSafeAreaInsets();
+  // The backdrop's word comes from the kit namespace, as ScreenHeader's does, so it follows the app language.
+  const { t } = useTranslation('kit');
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -34,7 +37,7 @@ export function Sheet({ visible, onClose, children, testID }: SheetProps) {
         <Pressable
           testID={testID ? `${testID}-backdrop` : undefined}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={t('close')}
           className={SHEET_SCRIM_CLASSES}
           onPress={onClose}
         />

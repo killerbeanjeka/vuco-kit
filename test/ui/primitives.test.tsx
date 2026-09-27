@@ -10,6 +10,7 @@ import { ButtonPrimary } from '../../src/ui/ButtonPrimary';
 import { ButtonSecondary } from '../../src/ui/ButtonSecondary';
 import { ChoiceChip } from '../../src/ui/ChoiceChip';
 import { ExplainerCard } from '../../src/ui/ExplainerCard';
+import { ICON_NAMES, Icon } from '../../src/ui/icons';
 import { Input } from '../../src/ui/Input';
 import { ScreenHeader } from '../../src/ui/ScreenHeader';
 import { SegmentedTabs } from '../../src/ui/SegmentedTabs';
@@ -205,6 +206,23 @@ describe('ExplainerCard (VAPP-74 reusable explainer)', () => {
     expect(onSecondary).toHaveBeenCalledTimes(1);
   });
 
+  it('gives the secondary link a touch target of at least 48 dp', async () => {
+    await render(
+      <ExplainerCard
+        testID="ex3"
+        title="T"
+        rows={[{ icon: 'percent-outline', text: 'R' }]}
+        ctaLabel="Go"
+        onCta={jest.fn()}
+        secondaryLabel="Later"
+        onSecondary={jest.fn()}
+      />,
+    );
+    // NativeWind does not compile classes under Jest: the rendered class is what the device lays out.
+    const minHeight = /(?:^|\s)min-h-\[(\d+)px\](?:\s|$)/.exec(screen.getByTestId('ex3-secondary').props.className);
+    expect(Number(minHeight?.[1])).toBeGreaterThanOrEqual(48);
+  });
+
   it('omits the secondary link when no handler is given', async () => {
     await render(
       <ExplainerCard
@@ -303,7 +321,7 @@ describe('Sheet', () => {
   });
 });
 
-describe('ScreenHeader (the back / close words come from the kit namespace)', () => {
+describe('The kit namespace words (ScreenHeader back / close, Sheet backdrop)', () => {
   // An app that ships none of these words itself: the kit supplies them.
   const i18n = createI18n({ resources: { en: {}, de: {} }, fallbackLng: 'en' });
 
@@ -336,5 +354,36 @@ describe('ScreenHeader (the back / close words come from the kit namespace)', ()
     expect(screen.getByTestId('push').props.accessibilityLabel).toBe('Back');
     await render(<ScreenHeader variant="modal" testID="modal" />);
     expect(screen.getByTestId('modal').props.accessibilityLabel).toBe('Close');
+  });
+
+  it('labels the Sheet backdrop with the same word: "Schließen" in German', async () => {
+    await i18n.changeLanguage('de');
+    await render(
+      <Sheet visible onClose={jest.fn()} testID="sheet-de">
+        <Text>Inhalt</Text>
+      </Sheet>,
+    );
+    expect(screen.getByTestId('sheet-de-backdrop').props.accessibilityLabel).toBe('Schließen');
+  });
+
+  it('labels the Sheet backdrop "Close" in English', async () => {
+    await i18n.changeLanguage('en');
+    await render(
+      <Sheet visible onClose={jest.fn()} testID="sheet-en">
+        <Text>Content</Text>
+      </Sheet>,
+    );
+    expect(screen.getByTestId('sheet-en-backdrop').props.accessibilityLabel).toBe('Close');
+  });
+});
+
+describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw)', () => {
+  it('lists every name once, and each is a MaterialCommunityIcons glyph', () => {
+    const { glyphMap } = Icon as unknown as { glyphMap: Record<string, number> };
+    expect(ICON_NAMES.filter((name) => !(name in glyphMap))).toEqual([]);
+    expect(new Set(ICON_NAMES).size).toBe(ICON_NAMES.length);
+    expect(ICON_NAMES).toEqual(
+      expect.arrayContaining(['camera-outline', 'map-marker-outline', 'share-variant-outline', 'image-outline', 'undo', 'draw']),
+    );
   });
 });

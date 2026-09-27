@@ -11,57 +11,69 @@ cssInterop(MaterialCommunityIcons, {
   },
 });
 
-export type IconName =
-  | 'target'
-  | 'briefcase-outline'
-  | 'tune-variant'
-  | 'plus'
-  | 'cloud-check-outline'
-  | 'shield-check-outline'
-  | 'cellphone'
+// The names apps may use, each a MaterialCommunityIcons glyph (a test checks every one exists).
+export const ICON_NAMES = [
+  'target',
+  'briefcase-outline',
+  'tune-variant',
+  'plus',
+  'cloud-check-outline',
+  'shield-check-outline',
+  'cellphone',
   // Story 6.1b: delivery failed. Icon + text, never colour alone (UX-DR6).
-  | 'email-alert-outline'
+  'email-alert-outline',
   // Story 6.1d: delivery delayed (soft bounce) — caution, not catastrophe.
-  | 'clock-outline'
+  'clock-outline',
   // Story 7.2: unresolved overpayment on the recently-paid tile. Icon + text (UX-DR6).
-  | 'alert-circle-outline'
+  'alert-circle-outline',
   // VAPP-71 grouped-activity states (icon + text per row, UX-DR6).
-  | 'clock-alert-outline'
-  | 'email-open-outline'
-  | 'check-circle-outline'
+  'clock-alert-outline',
+  'email-open-outline',
+  'check-circle-outline',
   // VAPP-72 activation-checklist icons (invoice step + the locked/upcoming marker).
-  | 'receipt-text-outline'
-  | 'lock-outline'
+  'receipt-text-outline',
+  'lock-outline',
   // VAPP-74 tax-fork explainer: the three benefit rows + the re-open affordance.
-  | 'percent-outline'
-  | 'swap-horizontal'
-  | 'help-circle-outline'
+  'percent-outline',
+  'swap-horizontal',
+  'help-circle-outline',
   // VAPP-75 document-identity strip: tap-through affordance.
-  | 'chevron-right'
+  'chevron-right',
   // VAPP-76 line-card delete affordance (icon-button top-right, not red inline text).
-  | 'close'
+  'close',
   // VAPP-79 ScreenHeader: the single back affordance (push variant); 'close' above serves modals.
-  | 'arrow-left'
+  'arrow-left',
   // VAPP-82 OptionRow selection check — a vector mark that replaces the old ✓ text glyph.
-  | 'check'
+  'check',
   // VAPP-77 chase-queue step icons: zahlungserinnerung=bell, mahnung_1=email-open,
   // mahnung_2_frist=email-alert (letter-with-deadline).
-  | 'bell-outline'
+  'bell-outline',
   // Story 9.1a Documents surface: the Radar entry + empty-state glyph, the search icon, and the
   // per-kind card glyphs (invoice reuses receipt-text-outline; chase reuses email-open-outline).
-  | 'file-document-multiple-outline'
-  | 'file-document-outline'
-  | 'file-document-edit-outline'
-  | 'file-check-outline'
-  | 'cash-check'
-  | 'clipboard-check-outline'
-  | 'plus-box-outline'
-  | 'magnify'
+  'file-document-multiple-outline',
+  'file-document-outline',
+  'file-document-edit-outline',
+  'file-check-outline',
+  'cash-check',
+  'clipboard-check-outline',
+  'plus-box-outline',
+  'magnify',
   // Story 9.1b: the correction-chain badge glyph.
-  | 'source-branch'
+  'source-branch',
   // Story 13.1: the Price-list bottom-bar destination (a price tag).
-  | 'tag-outline'
+  'tag-outline',
   // 2026-07-31 polish: the Job Card's customer-rename affordance.
-  | 'pencil-outline';
+  'pencil-outline',
+  // Kit 0.4.0 (vuco:walk Story 1.1): capture, the location chip, sharing, the gallery, undo and photo
+  // markup. Outline forms where the family has one, like the rest of the set.
+  'camera-outline',
+  'map-marker-outline',
+  'share-variant-outline',
+  'image-outline',
+  'undo',
+  'draw',
+] as const;
+
+export type IconName = (typeof ICON_NAMES)[number];
 
 export const Icon = MaterialCommunityIcons;

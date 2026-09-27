@@ -5,8 +5,10 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 // A fixed padding fails whenever insets.bottom or fontScale grow the bar
 // (3.1 review fix — founder hit the overlap on a 3-button-nav device), so the
 // bar MEASURES its occupied zone (pill + margins + safe-area) via onLayout and
-// publishes it here; screens pad by the measured value.
-const FALLBACK_CLEARANCE = 112;
+// publishes it here, up to the top of the floating + button above it; screens
+// pad by the measured value. The fallback covers ScreenFooter's first frame:
+// its default 72 dp bar, the 12 dp gap and the 56 dp button, plus 8 dp.
+const FALLBACK_CLEARANCE = 148;
 
 const ClearanceContext = createContext(FALLBACK_CLEARANCE);
 const SetClearanceContext = createContext<(height: number) => void>(() => {});

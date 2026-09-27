@@ -13,9 +13,10 @@ import { Icon, type IconName } from './icons';
 // Extra-Work FAB, which lives on the full-screen Job Card that covers the tabs, so the two are never
 // on screen together). Labels are ALWAYS shown; they grow the bar at fontScale 2.0 (UX-DR2).
 //
-// Still an absolute overlay that MEASURES its height (onLayout → bottomBarSpace) so tab screens pad
-// their content clear of it; the measured height also positions the FAB just above the bar. Hidden
-// under the open keyboard (UX-DR8). Structurally typed against the react-navigation tabBar contract.
+// Still an absolute overlay that MEASURES its height (onLayout → bottomBarSpace); the measured height
+// positions the FAB just above the bar, and the reported zone runs up to the FAB's top edge, so a tab
+// screen's last row, right-aligned content included, scrolls clear of both. Hidden under the open
+// keyboard (UX-DR8). Structurally typed against the react-navigation tabBar contract.
 //
 // The consuming app supplies its destinations (`items`, labels already translated) and the floating
 // action (`primaryAction`); the bar, the FAB and the re-entrancy guard live here.
@@ -37,6 +38,11 @@ interface FooterItem {
 // Re-entrancy guard so a fast double-tap can't stack two New sheets. Module-scoped: it must
 // survive the footer re-mounting when the keyboard hides.
 let primaryActionTapAt = 0;
+
+// The FAB's geometry, which the clearance adds above the bar. The size is spelled out in px because
+// NativeWind's rem is 14 on native: the former `h-16` was 56 dp on devices, and stays 56.
+const FAB_GAP = 12;
+const FAB_SIZE = 56;
 
 function DestinationTab({
   name,
@@ -117,14 +123,14 @@ export function ScreenFooter({ state, navigation, items, primaryAction }: Screen
   return (
     <>
       {/* Floating New-job FAB (brand mock): orange = capture, bottom-right, floating just above the
-          bar. Same silhouette as the Extra-Work FAB (a 64 px orange circle, dark glyph both modes). */}
+          bar. Same silhouette as the Extra-Work FAB (a 56 dp orange circle, dark glyph both modes). */}
       <Pressable
         testID="tab-new"
         accessibilityRole="button"
         accessibilityLabel={primaryAction.label}
         onPress={pressPrimaryAction}
-        style={{ position: 'absolute', right: 16, bottom: barHeight + 12, zIndex: 10, elevation: 8 }}
-        className="h-16 w-16 items-center justify-center rounded-full border border-on-accent/10 bg-accent active:opacity-90 dark:border-on-accent-dark/10 dark:bg-accent-dark"
+        style={{ position: 'absolute', right: 16, bottom: barHeight + FAB_GAP, zIndex: 10, elevation: 8 }}
+        className="h-[56px] w-[56px] items-center justify-center rounded-full border border-on-accent/10 bg-accent active:opacity-90 dark:border-on-accent-dark/10 dark:bg-accent-dark"
       >
         <Icon name="plus" size={30} className="text-on-accent dark:text-on-accent-dark" />
       </Pressable>
@@ -132,12 +138,13 @@ export function ScreenFooter({ state, navigation, items, primaryAction }: Screen
         testID="bottom-bar"
         className="absolute inset-x-0 bottom-0 border-t border-border-hairline bg-surface-raised dark:border-border-hairline-dark dark:bg-surface-raised-dark"
         style={{ paddingBottom: insets.bottom }}
-        // Measured occupied zone (bar height + safe-area) feeds the screens' clearance AND the FAB's
-        // offset — fixed paddings under-clear on tall-nav / fontScale-2.0 devices (VAPP-78).
+        // Measured occupied zone (bar height + safe-area) sets the FAB's offset, and with the FAB on top
+        // it feeds the screens' clearance — fixed paddings under-clear on tall-nav / fontScale-2.0
+        // devices (VAPP-78), and a clearance without the FAB hides right-aligned last rows under it.
         onLayout={(event) => {
           const height = event.nativeEvent.layout.height;
           setBarHeight(height);
-          reportHeight(height);
+          reportHeight(height + FAB_GAP + FAB_SIZE);
         }}
       >
         <View className="flex-row items-stretch">

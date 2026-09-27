@@ -72,7 +72,7 @@ export function ExplainerCard({
             testID={testID ? `${testID}-secondary` : undefined}
             accessibilityRole="button"
             onPress={onSecondary}
-            className="min-h-11 items-center justify-center"
+            className="min-h-[48px] items-center justify-center"
           >
             <Text className="font-body text-body text-link dark:text-link-dark">{secondaryLabel}</Text>
           </Pressable>

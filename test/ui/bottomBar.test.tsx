@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Keyboard, Pressable, Text } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text } from 'react-native';
 
 import { BottomBarSpaceProvider, useBottomBarClearance, useReportBottomBarHeight } from '../../src/ui/bottomBarSpace';
 import { type IconName } from '../../src/ui/icons';
@@ -135,8 +135,9 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
         <ClearanceProbe />
       </BottomBarSpaceProvider>,
     );
-    // Fallback before any measurement — always a positive clearance, never 0.
-    expect(screen.getByTestId('clearance')).toHaveTextContent('112');
+    // Fallback before any measurement — always a positive clearance, never 0: the default bar and the
+    // + button above it (72 + 12 + 56) plus 8 dp.
+    expect(screen.getByTestId('clearance')).toHaveTextContent('148');
     // A measured bar taller than the fallback wins (160 + 8 dp breathing room).
     await fireEvent.press(screen.getByTestId('report-160'));
     expect(screen.getByTestId('clearance')).toHaveTextContent('168');
@@ -157,7 +158,7 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
       </BottomBarSpaceProvider>,
     );
     // Before any layout fires, the consumer sees the fallback (onLayout does not fire in RNTL by itself).
-    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('112');
+    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('148');
     // Fire the layout event the native side raises on the bar wrapper — the ONLY path that carries the
     // measured overlay height into the clearance (BottomBar.onLayout → reportHeight → provider).
     await act(async () => {
@@ -165,8 +166,35 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
         nativeEvent: { layout: { height: 150, width: 320, x: 0, y: 0 } },
       });
     });
-    // 150 measured + 8 breathing room reaches the consumer. Reading layout.width instead of .height,
-    // or dropping the onLayout binding on the bar, leaves this at 112 → reds.
-    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('158');
+    // 150 measured + the 12 dp gap + the 56 dp button + 8 breathing room reaches the consumer. Reading
+    // layout.width instead of .height, or dropping the onLayout binding on the bar, leaves this at 148.
+    expect(screen.getByTestId('consumer-clearance')).toHaveTextContent('226');
+  });
+
+  it('clears the + button: the clearance reaches above the FAB as the bar renders it', async () => {
+    function Consumer() {
+      const clearance = useBottomBarClearance();
+      return <Text testID="consumer-clearance">{clearance}</Text>;
+    }
+    await render(
+      <BottomBarSpaceProvider>
+        <ScreenFooter {...makeProps(0)} />
+        <Consumer />
+      </BottomBarSpaceProvider>,
+    );
+    for (const height of [64, 150, 240]) {
+      await act(async () => {
+        fireEvent(screen.getByTestId('bottom-bar'), 'layout', {
+          nativeEvent: { layout: { height, width: 320, x: 0, y: 0 } },
+        });
+      });
+      // Read the FAB's offset and size from what the bar renders, not from the constants behind them.
+      const fab = screen.getByTestId('tab-new');
+      const fabBottom = StyleSheet.flatten(fab.props.style).bottom as number;
+      const fabSize = Number(/(?:^|\s)h-\[(\d+)px\](?:\s|$)/.exec(fab.props.className)?.[1]);
+      expect(fabBottom).toBe(height + 12);
+      expect(fabSize).toBe(56);
+      expect(Number(screen.getByTestId('consumer-clearance').props.children)).toBeGreaterThanOrEqual(fabBottom + fabSize);
+    }
   });
 });

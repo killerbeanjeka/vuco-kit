@@ -133,6 +133,12 @@ jobs:
             console.log(`npm pack lists all ${required.length} required files and nothing outside the published layout`);
           ' "$RUNNER_TEMP/pack.json"
 
+      - name: The packed kit installs into a scratch app with its peers, and every documented path resolves
+        # A second consumer exists (vuco:walk): a kit change that breaks resolution for an app - a file the
+        # docs promise and the package lacks, a peer that does not resolve, a config whose require fails -
+        # fails here, before a tag, not in the first app that pins it. It works in the runner's temp folder.
+        run: node test/consumer/scratchApp.mjs
+
       - name: The tree is unchanged (verdict, outputs, nothing stray)
         # porcelain (not diff): an untracked file, such as a regenerated verdict or a stray output, fails too
         run: |

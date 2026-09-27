@@ -138,12 +138,40 @@ test("a packId that differs from its directory fails, naming the pack", async (t
   assert.match(result.stdout, /^packs\/cc\/pack\.json: valid/, "one bad pack does not hide the others");
 });
 
+const MISNAMED = "not validated — a pack folder is named with its pack id, two lowercase letters";
+
 test("without a two-letter pack directory the run fails with No pack directories", async (t) => {
-  for (const packs of [{}, { abc: pack("abc"), A1: pack("A1"), "d-e": pack("de") }]) {
-    const result = await run(t, packsFolder(packs));
-    assert.equal(result.code, 1);
-    assert.equal(result.stderr, "No pack directories (two-letter country dirs) found.");
+  const none = await run(t, packsFolder({}));
+  assert.equal(none.code, 1);
+  assert.equal(none.stderr, "No pack directories (two-letter country dirs) found.");
+  const misnamedOnly = await run(t, packsFolder({ abc: pack("abc"), A1: pack("A1"), "d-e": pack("de") }));
+  assert.equal(misnamedOnly.code, 1);
+  assert.equal(
+    misnamedOnly.stderr,
+    [
+      `packs/A1/pack.json: ${MISNAMED}`,
+      `packs/abc/pack.json: ${MISNAMED}`,
+      `packs/d-e/pack.json: ${MISNAMED}`,
+      "No pack directories (two-letter country dirs) found.",
+    ].join("\n"),
+  );
+});
+
+test("a pack.json in a folder that is not a two-letter pack id fails the run; other folders are ignored", async (t) => {
+  const folder = packsFolder({ de: pack("de"), AT: pack("at"), deu: pack("deu") });
+  // An app's packs folder also holds tooling: none of it is a pack.
+  for (const dir of ["lint", "schema", "node_modules"]) {
+    mkdirSync(join(folder.packsDir, dir));
+    writeFileSync(join(folder.packsDir, dir, "README.md"), "not a pack");
   }
+  const result = await run(t, folder);
+  assert.equal(result.code, 1);
+  assert.equal(result.stderr, [`packs/AT/pack.json: ${MISNAMED}`, `packs/deu/pack.json: ${MISNAMED}`].join("\n"));
+  assert.equal(
+    result.stdout,
+    "packs/de/pack.json: valid (schema v1, pack v1.2.0, languages [en, fr] covered)",
+    "the two-letter pack beside them is still validated",
+  );
 });
 
 test("an app check's problems are reported under the pack, together with the kit's own", async (t) => {
@@ -274,18 +302,63 @@ test("ajv must be passed in as imported: a namespace import works too, anything 
 });
 
 test("translated strings are found by shape at any depth, with their paths", () => {
-  const found = collectTranslatedStrings({
-    title: { en: "A", de: "B" },
-    rates: [{ key: "x", label: { en: "C" } }],
-    counts: { en: 1, de: 2 }, // numbers: not a translated string
-    byCountry: { de: { note: { en: "D" } } }, // a two-letter key with an object value is walked into
-    empty: {},
-  });
+  const found = collectTranslatedStrings(
+    {
+      title: { en: "A", de: "B" },
+      rates: [{ key: "x", label: { en: "C" } }],
+      counts: { en: 1, de: 2 }, // numbers: not a translated string
+      byCountry: { de: { note: { en: "D" } } }, // a two-letter key with an object value is walked into
+      empty: {},
+      gap: { en: "E", de: null }, // null still marks a translated string, so its gap is found
+      regional: { "de-AT": "F", en: "G" },
+      countries: { at: "H", ch: "I" }, // no declared language among the keys: data, not a translation
+      countryCodes: { AT: "J", CH: "K" },
+    },
+    ["en", "de"],
+  );
   assert.deepEqual(found, [
     { path: "title", value: { en: "A", de: "B" } },
     { path: "rates[0].label", value: { en: "C" } },
     { path: "byCountry.de.note", value: { en: "D" } },
+    { path: "gap", value: { en: "E", de: null } },
+    { path: "regional", value: { "de-AT": "F", en: "G" } },
   ]);
+});
+
+test("blank, null, undeclared and regional translations are reported; country-keyed maps are left alone", () => {
+  const problems = languageCoverageProblems({
+    languages: ["de", "en"],
+    blank: { de: "", en: "Title" },
+    spaces: { de: "Titel", en: "   " },
+    nulled: { de: "Titel", en: null },
+    undeclared: { de: "Titel", en: "Title", fr: "Titre" },
+    regional: { de: "Titel", "de-AT": "Titel", en: "Title" },
+    regionalOnly: { "de-AT": "Titel" },
+    byCountry: { at: "Österreich", ch: "Schweiz" },
+    byCountryCode: { DE: "Deutschland", AT: "Österreich" },
+    fine: { de: "Titel", en: "Title" },
+  });
+  assert.deepEqual(problems, [
+    'blank: "de" translation is empty (languages[] coverage)',
+    'spaces: "en" translation is empty (languages[] coverage)',
+    'nulled: "en" translation is null (languages[] coverage)',
+    'undeclared: "fr" translation for a language languages[] does not declare',
+    'regional: "de-AT" translation for a language languages[] does not declare',
+    'regionalOnly: missing "de" translation (languages[] coverage)',
+    'regionalOnly: missing "en" translation (languages[] coverage)',
+    'regionalOnly: "de-AT" translation for a language languages[] does not declare',
+  ]);
+});
+
+test("a blank or null translation fails the pack in the run's report", async (t) => {
+  const result = await run(t, packsFolder({ aa: pack("aa", { wordings: { greeting: { en: "Hello", fr: " " }, farewell: { en: null, fr: "Adieu" } } }) }));
+  assert.equal(result.code, 1);
+  assert.equal(
+    result.stderr,
+    "packs/aa/pack.json: 2 semantic violation(s):\n" +
+      '  wordings.greeting: "fr" translation is empty (languages[] coverage)\n' +
+      '  wordings.farewell: "en" translation is null (languages[] coverage)',
+  );
 });
 
 test("languages that are not two-letter codes fail the coverage check instead of passing on nothing", () => {

@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.4.0 — 2026-09-27
+
+Kit release A (vuco:walk Story 1.1): what a second consumer needs before it pins the kit. The pack
+validator and `ScreenFooter`'s clearance change behaviour; nothing under `tokens` or `config` changed.
+
+- Consumer check: `kit-ci` installs the packed kit into a scratch app with every peer (at the kit's
+  devDependency versions), resolves every path the published docs name, and loads the Node modules and
+  configs among them (`test/consumer/scratchApp.mjs`, also a step-2 command in `CONTRIBUTING.md`).
+  `test/consumer/documentedPaths.test.mjs` checks in `npm test` that every documented path is published.
+- `CONTRIBUTING.md` step 6 names both consumers, vuco and vuco:walk, with their `apps/mobile` and
+  `packs` folders and the DESIGN.md that carries each `kit:` line; `sync-kit` is vuco's alone.
+- `validatePacks.mjs`:
+  - a `pack.json` in a folder not named with two lowercase letters (`packs/AT/`, `packs/deu/`) fails
+    the run and names the folder, instead of going unchecked; folders without one stay ignored;
+  - language coverage reports blank and `null` translations, and translations in a language
+    `languages[]` does not declare, regional keys (`de-AT`) included;
+  - a translated string needs one of the pack's languages among its keys, so a map keyed by country
+    codes (`{ at: …, ch: … }`) is no longer reported as missing every language; the README recommends
+    uppercase ISO codes for per-country maps;
+  - `collectTranslatedStrings(node, languages, path?, out?)` now takes the pack's languages.
+- `Sheet`'s backdrop label is the `kit` namespace's `close` ("Schließen" in German) instead of a fixed
+  English "Close".
+- `ExplainerCard`'s secondary link has a 48 dp touch target (`min-h-[48px]`). Its `min-h-11` was
+  38.5 dp on devices, where NativeWind's rem is 14.
+- Icons: `camera-outline`, `map-marker-outline`, `share-variant-outline`, `image-outline`, `undo` and
+  `draw`. `ICON_NAMES` lists every name, `IconName` derives from it, and a test checks that each is a
+  MaterialCommunityIcons glyph.
+- `ScreenFooter` reports its occupied zone up to the top of the floating button (the bar, the 12 dp
+  gap and the 56 dp button), so a tab screen's last row, right-aligned content included, scrolls clear
+  of the button; the fallback clearance is 148 dp. The button's `h-16` is spelled `h-[56px]`, its size
+  on devices, so the button and the clearance agree.
+- README: "Use in an app" documents the theme module and the font files; "Known gaps" is gone, both
+  gaps closed.
+- Tests cover each change.
+
 ## 0.3.1 — 2026-09-16
 
 Review fixes for the 0.3.0 family contracts (vuco Story 15.3 review), including two founder decisions
