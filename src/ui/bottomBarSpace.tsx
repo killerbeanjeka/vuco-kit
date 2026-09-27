@@ -34,7 +34,7 @@ export function useBottomBarClearance(): number {
   return useContext(ClearanceContext);
 }
 
-/** Bar-internal: report the measured overlay height. */
+/** Bar-internal: report the occupied zone, the measured bar plus the floating button above it. */
 export function useReportBottomBarHeight(): (height: number) => void {
   return useContext(SetClearanceContext);
 }

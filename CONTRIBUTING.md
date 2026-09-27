@@ -27,7 +27,9 @@ In this order:
    - vuco (`killerbeanjeka/vuco-app`):
      `_bmad-output/planning-artifacts/ux-designs/ux-vuco-2026-07-15/DESIGN.md`;
    - vuco:walk (`killerbeanjeka/vuco-walk`):
-     `_bmad-output/planning-artifacts/ux-designs/ux-vuco-walk-2026-09-16/DESIGN.md` (under `tokens:`).
+     `_bmad-output/planning-artifacts/ux-designs/ux-vuco-walk-2026-09-16/DESIGN.md`. vuco:walk has
+     these folders from its Story 1.2 on; that story installs the newest tag and moves its `kit:`
+     line, so a release before it moves vuco alone.
 
    In each consumer:
    - install the new tag explicitly in both folders: `apps/mobile`

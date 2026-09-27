@@ -2,7 +2,7 @@
 // validator's report lines and exit codes. Every pack lives in a throw-away folder under the OS temp
 // directory. ajv comes in exactly as an app passes it: the default exports of ajv 8 and ajv-formats 3.
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -172,6 +172,34 @@ test("a pack.json in a folder that is not a two-letter pack id fails the run; ot
     "packs/de/pack.json: valid (schema v1, pack v1.2.0, languages [en, fr] covered)",
     "the two-letter pack beside them is still validated",
   );
+});
+
+test("a pack.json directly in the packs folder fails the run instead of going unchecked", async (t) => {
+  const folder = packsFolder({ de: pack("de") });
+  writeFileSync(join(folder.packsDir, "pack.json"), JSON.stringify(pack("zz")));
+  const result = await run(t, folder);
+  assert.equal(result.code, 1);
+  assert.equal(
+    result.stderr,
+    "packs/pack.json: not validated — a pack sits in a folder named with its pack id, two lowercase letters",
+  );
+  assert.match(result.stdout, /^packs\/de\/pack\.json: valid/, "the pack beside it is still validated");
+});
+
+test("a pack folder whose pack.json cannot be read is exit 2, never a pass", async (t) => {
+  const folder = packsFolder({ de: pack("de") });
+  mkdirSync(join(folder.packsDir, "AT"));
+  const link = join(folder.packsDir, "AT", "pack.json");
+  try {
+    symlinkSync(link, link, "junction"); // a link to itself: stat fails with ELOOP
+  } catch {
+    t.skip("this system refuses to create the link");
+    return;
+  }
+  const result = await run(t, folder);
+  assert.equal(result.code, 2, result.stderr);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /cannot read the packs directory .*AT[\\/]pack\.json/);
 });
 
 test("an app check's problems are reported under the pack, together with the kit's own", async (t) => {
@@ -348,6 +376,42 @@ test("blank, null, undeclared and regional translations are reported; country-ke
     'regionalOnly: missing "en" translation (languages[] coverage)',
     'regionalOnly: "de-AT" translation for a language languages[] does not declare',
   ]);
+});
+
+test("a misspelt or undeclared-only translation is still checked; a country code that is no language is data", () => {
+  const problems = languageCoverageProblems({
+    languages: ["de", "en"],
+    upper: { de: "Titel", EN: "Title" },
+    lowerRegion: { de: "Titel", "en-us": "Title" },
+    underscore: { de: "Titel", en_GB: "Title" },
+    spaced: { de: "Titel", "en ": "Title" },
+    foreignOnly: { fr: "Titre" },
+    countries: { at: "Österreich", li: "Liechtenstein" }, // at is no language code: data
+    countryCodes: { DE: "Deutschland", FR: "Frankreich" },
+  });
+  assert.deepEqual(problems, [
+    'upper: missing "en" translation (languages[] coverage)',
+    'upper: "EN" translation for a language languages[] does not declare',
+    'lowerRegion: missing "en" translation (languages[] coverage)',
+    'lowerRegion: "en-us" translation for a language languages[] does not declare',
+    'underscore: missing "en" translation (languages[] coverage)',
+    'underscore: "en_GB" translation for a language languages[] does not declare',
+    'spaced: missing "en" translation (languages[] coverage)',
+    'spaced: "en " translation for a language languages[] does not declare',
+    'foreignOnly: missing "de" translation (languages[] coverage)',
+    'foreignOnly: missing "en" translation (languages[] coverage)',
+    'foreignOnly: "fr" translation for a language languages[] does not declare',
+  ]);
+  // A German-only pack still catches an English-only string, as 0.3.1 did.
+  assert.deepEqual(languageCoverageProblems({ languages: ["de"], title: { en: "Hello" } }), [
+    'title: missing "de" translation (languages[] coverage)',
+    'title: "en" translation for a language languages[] does not declare',
+  ]);
+});
+
+test("collectTranslatedStrings needs the pack's languages: an old-style call fails loudly", () => {
+  assert.throws(() => collectTranslatedStrings({ title: { en: "A" } }, /** @type {any} */ ("title.en")), TypeError);
+  assert.throws(() => collectTranslatedStrings({ title: { en: "A" } }, /** @type {any} */ (undefined)), TypeError);
 });
 
 test("a blank or null translation fails the pack in the run's report", async (t) => {

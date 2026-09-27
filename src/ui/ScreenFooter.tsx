@@ -124,7 +124,8 @@ export function ScreenFooter({ state, navigation, items, primaryAction }: Screen
   return (
     <>
       {/* Floating New-job FAB (brand mock): orange = capture, bottom-right, floating just above the
-          bar. Same silhouette as the Extra-Work FAB (a 64 dp orange circle, dark glyph both modes). */}
+          bar. A 64 dp orange circle with a dark glyph in both modes, the size DESIGN.md also gives the
+          Extra-Work FAB. */}
       <Pressable
         testID="tab-new"
         accessibilityRole="button"

@@ -16,26 +16,40 @@
 // an app. The kit still owns the settings: JSON Schema 2020-12, `strict`, `allErrors`, and formats.
 //
 // Pack conventions the kit relies on: a pack lives at <packsDir>/<id>/pack.json, where <id> is two
-// lowercase letters, and a pack.json in any other folder fails the run; `packId` equals <id>; the pack
-// has `version`, `schemaVersion` and `languages[]`. A translated string is an object whose keys are all
-// language tags (`de`, or a regional `de-AT`) and whose values are all strings or null, with at least
-// one key in languages[] (or a regional form of one). So a map keyed by lowercase country codes, such
-// as `{ at: …, ch: … }`, is data, not a translation; a per-country map keyed by uppercase ISO codes
+// lowercase letters, and a pack.json anywhere else in <packsDir> fails the run; `packId` equals <id>;
+// the pack has `version`, `schemaVersion` and `languages[]`. A translated string is an object whose
+// values are all strings or null and that either has a key in languages[] (then every other key is a
+// language the pack does not declare, however it is spelled) or is keyed only by lowercase language
+// tags of ISO 639-1 languages (`en`, `de-AT`, `pt_BR`). A map keyed by a country code that is no
+// language code, such as `{ at: …, ch: … }`, is data; a per-country map keyed by uppercase ISO codes
 // (`{ AT: … }`) never matches. Every other pack field, and the whole schema, belongs to the app (AD-1).
 //
 // The kit checks those conventions itself (a schema may not require them): a pack without them fails.
 //
-// Exit codes (returned, never passed to process.exit): 0 = every pack is valid; 1 = a pack failed, or
-// there is no pack directory; 2 = the schema or the packs directory cannot be read or compiled, the ajv
+// Exit codes (returned, never passed to process.exit): 0 = every pack is valid; 1 = a pack failed, a
+// pack.json sits outside a two-letter pack folder, or there is no pack directory; 2 = the schema or the packs directory cannot be read or compiled, the ajv
 // passed in is not usable, or an app check throws or returns something other than a list of lines.
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 const TWO_LETTERS = /^[a-z]{2}$/;
-// A language code, or a regional form of one (`de-AT`). Regional keys are recognised so that their
-// translated string is still checked; languages[] holds plain codes, so they are reported as undeclared.
-const LANGUAGE_TAG = /^[a-z]{2}(?:-[A-Z]{2})?$/;
+// A lowercase language tag: a two-letter code, alone or with subtags (`de-AT`, `pt_BR`, `zh-Hant`).
+// languages[] holds plain codes, so a tag with subtags is always reported as undeclared.
+const LANGUAGE_TAG = /^([a-z]{2})(?:[-_][A-Za-z0-9]{1,8})*$/;
+// ISO 639-1, the two-letter language codes. A map keyed only by their tags is a translation even when
+// the pack declares none of its languages; a lowercase country code that is no language code (`at`)
+// marks a map as data.
+const LANGUAGE_CODES = new Set(
+  (
+    "aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de " +
+    "dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id " +
+    "ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu " +
+    "lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu " +
+    "rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr " +
+    "ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo za zh zu"
+  ).split(" "),
+);
 
 /**
  * @typedef {object} TranslatedString
@@ -113,9 +127,24 @@ function versionProblems(pack) {
 }
 
 /**
+ * Whether an object is a translated string: every value is a string or null, and either one key is a
+ * declared language, or every key is a lowercase language tag of an ISO 639-1 language.
+ * @param {Record<string, unknown>} node
+ * @param {readonly string[]} languages
+ * @returns {boolean}
+ */
+function isTranslatedString(node, languages) {
+  const keys = Object.keys(node);
+  if (keys.length === 0 || !keys.every((key) => typeof node[key] === "string" || node[key] === null)) {
+    return false;
+  }
+  if (keys.some((key) => languages.includes(key))) return true;
+  return keys.every((key) => LANGUAGE_CODES.has(LANGUAGE_TAG.exec(key)?.[1] ?? ""));
+}
+
+/**
  * Every translated string in a pack, matched by shape, so a new pack slot is covered without a code
- * change: an object whose keys are all language tags and whose values are all strings or null, with at
- * least one key among `languages` (or a regional form of one). Anything else is walked into.
+ * change (see isTranslatedString). Anything else is walked into.
  * @param {unknown} node
  * @param {readonly string[]} languages  the pack's declared languages
  * @param {string} [path]  the path of `node` itself
@@ -123,21 +152,21 @@ function versionProblems(pack) {
  * @returns {TranslatedString[]}
  */
 export function collectTranslatedStrings(node, languages, path = "", out = []) {
+  if (!Array.isArray(languages)) {
+    throw new TypeError("collectTranslatedStrings(node, languages): languages must be the pack's languages[] list");
+  }
   if (Array.isArray(node)) {
     node.forEach((item, i) => collectTranslatedStrings(item, languages, `${path}[${i}]`, out));
     return out;
   }
   if (!isRecord(node)) return out;
-  const keys = Object.keys(node);
-  if (
-    keys.length > 0 &&
-    keys.every((key) => LANGUAGE_TAG.test(key) && (typeof node[key] === "string" || node[key] === null)) &&
-    keys.some((key) => languages.includes(key.slice(0, 2)))
-  ) {
+  if (isTranslatedString(node, languages)) {
     out.push({ path, value: /** @type {Record<string, string | null>} */ (node) });
     return out;
   }
-  for (const key of keys) collectTranslatedStrings(node[key], languages, path ? `${path}.${key}` : key, out);
+  for (const key of Object.keys(node)) {
+    collectTranslatedStrings(node[key], languages, path ? `${path}.${key}` : key, out);
+  }
   return out;
 }
 
@@ -232,6 +261,7 @@ export async function runPackValidation({ packsDir, schemaFile, ajv, checks = []
   let ids;
   /** @type {string[]} */
   const misnamed = [];
+  let packAtRoot = false;
   try {
     const folders = (await readdir(packsDir, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
@@ -241,11 +271,15 @@ export async function runPackValidation({ packsDir, schemaFile, ajv, checks = []
     for (const name of folders) {
       if (!TWO_LETTERS.test(name) && (await holdsPackFile(join(packsDir, name)))) misnamed.push(name);
     }
+    packAtRoot = await holdsPackFile(packsDir);
   } catch (err) {
     console.error(`pack validation: cannot read the packs directory ${packsDir} — ${reason(err)}`);
     return 2;
   }
-  // A pack in a folder that is not a pack id would otherwise never be validated.
+  // A pack outside a folder named with its pack id would otherwise never be validated.
+  if (packAtRoot) {
+    console.error(`${basename(packsDir)}/pack.json: not validated — a pack sits in a folder named with its pack id, two lowercase letters`);
+  }
   for (const name of misnamed) {
     console.error(`${label(name)}: not validated — a pack folder is named with its pack id, two lowercase letters`);
   }
@@ -254,7 +288,7 @@ export async function runPackValidation({ packsDir, schemaFile, ajv, checks = []
     return 1;
   }
 
-  let failed = misnamed.length > 0;
+  let failed = packAtRoot || misnamed.length > 0;
   for (const id of ids) {
     /** @type {unknown} */
     let pack;

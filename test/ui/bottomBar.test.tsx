@@ -182,6 +182,12 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
         <Consumer />
       </BottomBarSpaceProvider>,
     );
+    // The first frame, before any layout: the fallback must clear the button at the bar's default
+    // height, as rendered, plus the 8 dp breathing room.
+    const first = screen.getByTestId('tab-new');
+    const firstBottom = StyleSheet.flatten(first.props.style).bottom as number;
+    const firstSize = Number(/(?:^|\s)h-\[(\d+)px\](?:\s|$)/.exec(first.props.className)?.[1]);
+    expect(Number(screen.getByTestId('consumer-clearance').props.children)).toBeGreaterThanOrEqual(firstBottom + firstSize + 8);
     for (const height of [64, 150, 240]) {
       await act(async () => {
         fireEvent(screen.getByTestId('bottom-bar'), 'layout', {
@@ -194,7 +200,7 @@ describe('bottom-bar clearance (VAPP-78: measured, never under-clears)', () => {
       const fabSize = Number(/(?:^|\s)h-\[(\d+)px\](?:\s|$)/.exec(fab.props.className)?.[1]);
       expect(fabBottom).toBe(height + 12);
       expect(fabSize).toBe(64);
-      expect(Number(screen.getByTestId('consumer-clearance').props.children)).toBeGreaterThanOrEqual(fabBottom + fabSize);
+      expect(Number(screen.getByTestId('consumer-clearance').props.children)).toBeGreaterThanOrEqual(fabBottom + fabSize + 8);
     }
   });
 });

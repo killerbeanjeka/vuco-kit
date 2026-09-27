@@ -127,9 +127,9 @@ role and state on every control.
   `primaryAction` button 12 dp above the bar, guarded against double taps. It overlays the screen and
   publishes its measured height up to the top of that button, so right-aligned content on a tab
   screen's last row scrolls clear of the button too.
-- `bottomBarSpace` — `BottomBarSpaceProvider` and two hooks that share the bar's measured height
-  (`useReportBottomBarHeight`, `useBottomBarClearance`), so tab screens pad their last control clear
-  of it. The clearance adds 8 dp, never shrinks, and starts at 156 dp: `ScreenFooter`'s default bar
+- `bottomBarSpace` — `BottomBarSpaceProvider` and two hooks that share the zone the bar measures,
+  up to the top of its floating button (`useReportBottomBarHeight`, `useBottomBarClearance`), so tab
+  screens pad their last control clear of both. The clearance adds 8 dp, never shrinks, and starts at 156 dp: `ScreenFooter`'s default bar
   and its button.
 - `SegmentedTabs` — an in-screen tab bar: the selected tab has an underline, never colour alone, and
   each tab can show a count badge.
@@ -151,11 +151,13 @@ A pack lives at `<packs>/<id>/pack.json`, where `<id>` has two lowercase letters
 folder with any other name fails the run instead of going unchecked. A pack has `packId` equal to
 `<id>`, a non-empty `version`, a `schemaVersion`, and `languages[]` (two-letter codes, at least one).
 The validator checks these itself, whatever the app's schema requires. A translated string is an
-object whose keys are all language tags (`de`, or a regional `de-AT`) and whose values are all strings
-or `null`, with at least one key in `languages[]` (or a regional form of one). Each declared language
-needs a non-blank text, and a key the pack does not declare is reported. A map keyed by lowercase
-country codes that are not declared languages, such as `{ "at": …, "ch": … }`, is data, not a
-translation; key a per-country map by uppercase ISO 3166 codes (`{ "AT": … }`), which never match.
+object whose values are all strings or `null` and that either has a key in `languages[]`, or is keyed
+only by lowercase language tags of ISO 639-1 languages (`en`, `de-AT`, `pt_BR`). Each declared language
+needs a non-blank text, and every other key is reported as a language the pack does not declare,
+however it is spelled (`EN`, `en_GB`). So an object with a declared-language key and only text values
+is a translation: give any other text fields their own object. A map keyed by a lowercase country code
+that is no language code, such as `{ "at": …, "ch": … }`, is data; key a per-country map by uppercase
+ISO 3166 codes (`{ "AT": … }`), which never match.
 Everything else in a pack, and its schema, belongs to the app.
 
 - **Validator.** `runPackValidation({ packsDir, schemaFile, ajv: { Ajv2020, addFormats }, checks })`
@@ -227,8 +229,9 @@ node test/consumer/scratchApp.mjs
 `npm test` runs the node:test suites (token tooling, pack validator and lint, version helper, the
 documented consumer paths) and the Jest suites (primitives, i18n factory, copy-drift helper, `.vuco`
 validator), on the stack vuco's app tests use. `test/consumer/scratchApp.mjs` installs the packed kit
-into a scratch app with every peer, as an app installs a tag, resolves every path the published docs
-name, and loads the Node modules and configs among them; `kit-ci` runs it too.
+into a scratch app with every peer, as an app installs a tag, and resolves every path the published docs
+name: the Node modules and the ESLint config load, TypeScript parses the base tsconfig, and every package
+the TypeScript sources import resolves. `kit-ci` runs it too.
 
 To try a change in an app before its tag exists, run `npm pack` here and
 `npm install --no-save <path-to-tgz>` in the app, then restart Metro with `-c`. Never `npm link` the

@@ -2,24 +2,43 @@
 
 ## 0.4.0 — 2026-09-27
 
-Kit release A (vuco:walk Story 1.1): what a second consumer needs before it pins the kit. The pack
-validator and `ScreenFooter`'s clearance change behaviour; nothing under `tokens` or `config` changed.
+Kit release A (vuco:walk Story 1.1): what a second consumer needs before it pins the kit. Nothing
+under `tokens` or `config` changed.
+
+Upgrading an app:
+
+- The pack validator reports more: a `pack.json` outside a two-letter pack folder, blank and `null`
+  translations, and translations in languages `languages[]` does not declare. An object with a
+  declared-language key and only text values now counts as a translation, so its other keys are
+  reported. Run the validator on the app's packs before moving the pin.
+- The floating + button is 64 dp (it rendered 56), and the tab-screen clearance grows by 76 dp: every
+  screen that pads with `useBottomBarClearance()` scrolls further, and content centred in a view padded
+  with it sits about 38 dp higher.
+- `ExplainerCard`'s secondary link is 48 dp tall (it rendered 38.5), and `Sheet`'s backdrop label
+  follows the app language.
+- `collectTranslatedStrings(node, languages, path?, out?)` takes the pack's languages second and
+  throws a `TypeError` without them.
 
 - Consumer check: `kit-ci` installs the packed kit into a scratch app with every peer (at the kit's
-  devDependency versions), resolves every path the published docs name, and loads the Node modules and
-  configs among them (`test/consumer/scratchApp.mjs`, also a step-2 command in `CONTRIBUTING.md`).
+  devDependency versions) and resolves every path the published docs name: the Node modules and the
+  ESLint config load, TypeScript parses the base tsconfig, and every package the TypeScript sources
+  import resolves (`test/consumer/scratchApp.mjs`, also a step-2 command in `CONTRIBUTING.md`).
   `test/consumer/documentedPaths.test.mjs` checks in `npm test` that every documented path is published.
 - `CONTRIBUTING.md` step 6 names both consumers, vuco and vuco:walk, with their `apps/mobile` and
   `packs` folders and the DESIGN.md that carries each `kit:` line; `sync-kit` is vuco's alone.
 - `validatePacks.mjs`:
   - a `pack.json` in a folder not named with two lowercase letters (`packs/AT/`, `packs/deu/`) fails
     the run and names the folder, instead of going unchecked; folders without one stay ignored;
+  - a `pack.json` directly in the packs folder fails the run too, and a pack folder whose `pack.json`
+    cannot be read is exit 2;
   - language coverage reports blank and `null` translations, and translations in a language
-    `languages[]` does not declare, regional keys (`de-AT`) included;
-  - a translated string needs one of the pack's languages among its keys, so a map keyed by country
-    codes (`{ at: …, ch: … }`) is no longer reported as missing every language; the README recommends
-    uppercase ISO codes for per-country maps;
-  - `collectTranslatedStrings(node, languages, path?, out?)` now takes the pack's languages.
+    `languages[]` does not declare, however the key is spelled (`EN`, `de-AT`, `en_GB`);
+  - a translated string is an object of text values with a declared-language key, or one keyed only by
+    lowercase tags of ISO 639-1 languages, so a map keyed by a country code that is no language
+    (`{ at: …, ch: … }`) is data, while `{ en: … }` in a German-only pack is still reported; the README
+    recommends uppercase ISO codes for per-country maps;
+  - `collectTranslatedStrings(node, languages, path?, out?)` takes the pack's languages and throws a
+    `TypeError` without them.
 - `Sheet`'s backdrop label is the `kit` namespace's `close` ("Schließen" in German) instead of a fixed
   English "Close".
 - `ExplainerCard`'s secondary link has a 48 dp touch target (`min-h-[48px]`). Its `min-h-11` was

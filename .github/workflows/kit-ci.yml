@@ -135,8 +135,11 @@ jobs:
 
       - name: The packed kit installs into a scratch app with its peers, and every documented path resolves
         # A second consumer exists (vuco:walk): a kit change that breaks resolution for an app - a file the
-        # docs promise and the package lacks, a peer that does not resolve, a config whose require fails -
-        # fails here, before a tag, not in the first app that pins it. It works in the runner's temp folder.
+        # docs promise and the package lacks, a peer or an import that does not resolve, a config that does
+        # not load - fails here, before a tag, not in the first app that pins it.
+        timeout-minutes: 15
+        env:
+          TMPDIR: ${{ runner.temp }} # the scratch app and the packed tarball live here, outside the tree
         run: node test/consumer/scratchApp.mjs
 
       - name: The tree is unchanged (verdict, outputs, nothing stray)

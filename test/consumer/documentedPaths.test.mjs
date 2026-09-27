@@ -56,6 +56,9 @@ test("a documented path resolves as an app resolves it: file, extensionless modu
   assert.deepEqual(resolveDocumentedPath(kit, "tokens/fonts/Face-<Weight>.ttf"), ["tokens/fonts/Face-Bold.ttf"]);
   assert.deepEqual(resolveDocumentedPath(kit, "src/ui/Missing"), []);
   assert.deepEqual(resolveDocumentedPath(kit, "src/i18n/*.yaml"), []);
+  // A placeholder with a space is cut at the space by the extractor: the check names it, not hangs.
+  assert.throws(() => resolveDocumentedPath(kit, "src/ui/<Primitive"), /unclosed "<" in the documented path src\/ui\/<Primitive/);
+  assert.throws(() => resolveDocumentedPath(kit, "src/ui/*.{ts"), /unclosed "\{" in the documented path/);
 });
 
 test("every path the published docs name resolves to files the package publishes", () => {

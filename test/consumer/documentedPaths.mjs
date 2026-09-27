@@ -36,7 +36,7 @@ export function extractDocumentedPaths(text) {
  * The files one documented path stands for inside a kit folder, as an app resolves it: the file
  * itself, a module named without its extension, or a folder's index module. A pattern stands for
  * every file it matches: `<Name>` and `*` match within one path segment, `**` across segments, and
- * `{a,b}` either alternative. Empty when nothing matches.
+ * `{a,b}` either alternative. Empty when nothing matches; an unclosed `<` or `{` throws.
  * @param {string} kitDir
  * @param {string} path  a documented path without the `@vuco/kit/` prefix
  * @returns {string[]}  paths relative to kitDir, with forward slashes
@@ -66,8 +66,10 @@ function patternToRegExp(pattern) {
   for (let i = 0; i < pattern.length; i++) {
     const char = pattern[i];
     if (char === "<") {
+      const end = pattern.indexOf(">", i);
+      if (end === -1) throw new Error(`unclosed "<" in the documented path ${pattern}`);
       source += "[^/]+";
-      i = pattern.indexOf(">", i);
+      i = end;
     } else if (char === "*" && pattern[i + 1] === "*") {
       const slash = pattern[i + 2] === "/";
       source += slash ? "(?:.*/)?" : ".*";
@@ -76,6 +78,7 @@ function patternToRegExp(pattern) {
       source += "[^/]*";
     } else if (char === "{") {
       const end = pattern.indexOf("}", i);
+      if (end === -1) throw new Error(`unclosed "{" in the documented path ${pattern}`);
       source += `(?:${pattern.slice(i + 1, end).split(",").map(escape).join("|")})`;
       i = end;
     } else {
