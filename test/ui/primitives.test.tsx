@@ -377,13 +377,16 @@ describe('The kit namespace words (ScreenHeader back / close, Sheet backdrop)', 
   });
 });
 
-describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw)', () => {
+describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs)', () => {
   it('lists every name once, and each is a MaterialCommunityIcons glyph', () => {
     const { glyphMap } = Icon as unknown as { glyphMap: Record<string, number> };
     expect(ICON_NAMES.filter((name) => !(name in glyphMap))).toEqual([]);
     expect(new Set(ICON_NAMES).size).toBe(ICON_NAMES.length);
     expect(ICON_NAMES).toEqual(
       expect.arrayContaining(['camera-outline', 'map-marker-outline', 'share-variant-outline', 'image-outline', 'undo', 'draw']),
+    );
+    expect(ICON_NAMES).toEqual(
+      expect.arrayContaining(['dots-vertical', 'drag-horizontal-variant', 'arrow-up', 'arrow-down', 'delete-outline']),
     );
   });
 });

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 — 2026-09-29
+
+Icon names for vuco:walk Story 1.5: the project menu and the Location editor. Only `ICON_NAMES` changed;
+nothing under `tokens` or `config`, and no component, changed.
+
+Upgrading an app: nothing to do. The new names add to `IconName`, and every existing name stays.
+
+- Icons: `dots-vertical` (the project menu), `drag-horizontal-variant` (the reorder handle), `arrow-up` and
+  `arrow-down` ("Move up" and "Move down"), and `delete-outline` (a row's delete action). The icon test
+  checks that each is a MaterialCommunityIcons glyph and listed once.
+
 ## 0.4.0 — 2026-09-27
 
 Kit release A (vuco:walk Story 1.1): what a second consumer needs before it pins the kit. Nothing

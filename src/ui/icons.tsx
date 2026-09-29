@@ -72,6 +72,13 @@ export const ICON_NAMES = [
   'image-outline',
   'undo',
   'draw',
+  // Kit 0.5.0 (vuco:walk Story 1.5): the project menu, reorder mode (the drag handle, "Move up" and
+  // "Move down") and a row's delete action.
+  'dots-vertical',
+  'drag-horizontal-variant',
+  'arrow-up',
+  'arrow-down',
+  'delete-outline',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
