@@ -18,6 +18,11 @@ interface OptionRowProps {
   grouped?: boolean;
   /** In grouped mode, draw the top hairline divider (i.e. every row except the first). */
   divider?: boolean;
+  /**
+   * What a screen reader reads for the row, when it needs more than the visible label (kit 0.6.0: a
+   * location row read with its parent, "Kitchen, in Flat 4"). Falls back to `label`.
+   */
+  accessibilityLabel?: string;
   testID?: string;
 }
 
@@ -25,12 +30,21 @@ interface OptionRowProps {
 // `link`-petrol label + a vector check (never colour alone, NFR-1 — the check is the shape signal).
 // Standalone it is a filled raised pill; `grouped` folds it into one hairline-divided card. The row
 // is a ≥48dp target (min-height 56, grows with fontScale).
-export function OptionRow({ label, selected, onPress, leading, grouped = false, divider = false, testID }: OptionRowProps) {
+export function OptionRow({
+  label,
+  selected,
+  onPress,
+  leading,
+  grouped = false,
+  divider = false,
+  accessibilityLabel,
+  testID,
+}: OptionRowProps) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="radio"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ checked: selected }}
       onPress={onPress}
       className={`min-h-[56px] w-full flex-row items-center gap-3 px-4 py-3 active:opacity-90 ${

@@ -79,6 +79,9 @@ export const ICON_NAMES = [
   'arrow-up',
   'arrow-down',
   'delete-outline',
+  // Kit 0.6.0 (vuco:walk Story 1.9): the selection bar's Move and Copy.
+  'arrow-right',
+  'content-copy',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

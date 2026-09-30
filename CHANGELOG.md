@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 — 2026-09-30
+
+TalkBack labels and icon names for vuco:walk Story 1.9: the Location sheet, the delete's move step and
+the selection bar. Nothing under `tokens` or `config` changed.
+
+Upgrading an app: nothing to do. The new prop is optional and falls back to what the component read
+before, and the new names add to `IconName`, where every existing name stays.
+
+- `OptionRow` and `ActionChip` take an optional `accessibilityLabel`, read by screen readers in place of
+  the visible `label` when given ("Kitchen, in Flat 4" for a row that shows "Kitchen"). Left out, they
+  read `label`, as before.
+- Icons: `arrow-right` (Move) and `content-copy` (Copy). The icon test checks that each is a
+  MaterialCommunityIcons glyph and listed once.
+- Tests cover both props, given and left out.
+
 ## 0.5.0 — 2026-09-29
 
 Icon names for vuco:walk Story 1.5: the project menu and the Location editor. Only `ICON_NAMES` changed;

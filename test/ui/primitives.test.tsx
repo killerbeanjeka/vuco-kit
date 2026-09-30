@@ -12,6 +12,7 @@ import { ChoiceChip } from '../../src/ui/ChoiceChip';
 import { ExplainerCard } from '../../src/ui/ExplainerCard';
 import { ICON_NAMES, Icon } from '../../src/ui/icons';
 import { Input } from '../../src/ui/Input';
+import { OptionRow } from '../../src/ui/OptionRow';
 import { ScreenHeader } from '../../src/ui/ScreenHeader';
 import { SegmentedTabs } from '../../src/ui/SegmentedTabs';
 import { Sheet } from '../../src/ui/Sheet';
@@ -255,6 +256,47 @@ describe('the VAPP-76 chip system (3 roles)', () => {
     await fireEvent.press(screen.getByTestId('ac'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('ActionChip reads its accessibilityLabel when given, and its label when left out (kit 0.6.0)', async () => {
+    await render(
+      <>
+        <ActionChip
+          label="New location here"
+          accessibilityLabel="New location in Flat 4"
+          leadingIcon="plus"
+          onPress={jest.fn()}
+          testID="ac-labelled"
+        />
+        <ActionChip label="Due in 14 days" onPress={jest.fn()} testID="ac-plain" />
+      </>,
+    );
+    expect(screen.getByText('New location here')).toBeOnTheScreen();
+    expect(screen.getByTestId('ac-labelled').props.accessibilityLabel).toBe('New location in Flat 4');
+    expect(screen.getByTestId('ac-plain').props.accessibilityLabel).toBe('Due in 14 days');
+  });
+});
+
+describe('OptionRow (a radio row of a picker)', () => {
+  it('reads its label, its checked state, and fires onPress', async () => {
+    const onPress = jest.fn();
+    await render(<OptionRow label="Kitchen" selected onPress={onPress} testID="or" />);
+    expect(screen.getByText('Kitchen')).toBeOnTheScreen();
+    const row = screen.getByTestId('or');
+    expect(row.props.accessibilityRole).toBe('radio');
+    expect(row.props.accessibilityLabel).toBe('Kitchen');
+    expect(row.props.accessibilityState).toMatchObject({ checked: true });
+    await fireEvent.press(row);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads its accessibilityLabel when given, and still shows the label (kit 0.6.0)', async () => {
+    await render(
+      <OptionRow label="Kitchen" accessibilityLabel="Kitchen, in Flat 4" selected={false} onPress={jest.fn()} testID="or" />,
+    );
+    expect(screen.getByText('Kitchen')).toBeOnTheScreen();
+    expect(screen.getByTestId('or').props.accessibilityLabel).toBe('Kitchen, in Flat 4');
+    expect(screen.getByTestId('or').props.accessibilityState).toMatchObject({ checked: false });
+  });
 });
 
 describe('Banner (VAPP-76 one caution surface)', () => {
@@ -377,7 +419,7 @@ describe('The kit namespace words (ScreenHeader back / close, Sheet backdrop)', 
   });
 });
 
-describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs)', () => {
+describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs; 0.6.0 move and copy)', () => {
   it('lists every name once, and each is a MaterialCommunityIcons glyph', () => {
     const { glyphMap } = Icon as unknown as { glyphMap: Record<string, number> };
     expect(ICON_NAMES.filter((name) => !(name in glyphMap))).toEqual([]);
@@ -388,5 +430,6 @@ describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and 
     expect(ICON_NAMES).toEqual(
       expect.arrayContaining(['dots-vertical', 'drag-horizontal-variant', 'arrow-up', 'arrow-down', 'delete-outline']),
     );
+    expect(ICON_NAMES).toEqual(expect.arrayContaining(['arrow-right', 'content-copy']));
   });
 });

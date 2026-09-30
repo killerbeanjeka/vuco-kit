@@ -12,19 +12,22 @@ export function ActionChip({
   onPress,
   leadingIcon,
   trailingIcon = 'chevron-right',
+  accessibilityLabel,
   testID,
 }: {
   label: string;
   onPress: () => void;
   leadingIcon?: IconName;
   trailingIcon?: IconName;
+  /** What a screen reader reads, when it needs more than the visible label (kit 0.6.0). Falls back to `label`. */
+  accessibilityLabel?: string;
   testID?: string;
 }) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
       hitSlop={{ top: 4, bottom: 4 }}
       className="min-h-[40px] flex-row items-center gap-2 rounded-full border-[1.5px] border-border-input px-3 py-2 dark:border-border-input-dark"
