@@ -1,1 +1,3 @@
-{}
+{
+  "ui/darkTreatment.tsx": "The dark treatment (kit 0.7.0): the class strings Sheet, Input, ChoiceChip, ActionChip, OptionRow, ButtonPrimary and ButtonSecondary take inside DarkTreatment, a surface that is dark in both themes, such as a sheet over a camera. They are each primitive's dark-mode look in the -dark tokens alone; outside the treatment every primitive keeps its paired classes in its own file, where this check reads them."
+}

@@ -24,7 +24,7 @@ Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says w
 | `tokens/fonts/` | Plus Jakarta Sans 2.7.1, five static weights, SIL OFL 1.1 (`OFL.txt`). |
 | `tokens/check-tnum.mjs` | Verifies tabular figures for the money role; writes `font-verdict.json`. |
 | `tokens/check-dark-pairing.mjs` | CLI for consumers: every dual-mode colour token is used with its `-dark` twin. |
-| `src/ui/<Name>.tsx` | The cross-app UI primitives — `ButtonPrimary`, `ButtonSecondary`, `Input`, `Sheet`, `OptionRow`, `ActionRow`, `ActionChip`, `ChoiceChip`, `Banner`, `ScreenHeader`, `ScreenFooter`, `SegmentedTabs`, `ExplainerCard`, `icons`, `bottomBarSpace` — as TypeScript source styled with the token classes. Contracts: [below](#primitive-contracts). |
+| `src/ui/<Name>.tsx` | The cross-app UI primitives — `ButtonPrimary`, `ButtonSecondary`, `Input`, `Sheet`, `OptionRow`, `ActionRow`, `ActionChip`, `ChoiceChip`, `Banner`, `ScreenHeader`, `ScreenFooter`, `SegmentedTabs`, `ExplainerCard`, `icons`, `bottomBarSpace`, `darkTreatment` — as TypeScript source styled with the token classes. Contracts: [below](#primitive-contracts). |
 | `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage()`; `en.json` and `de.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels and Sheet's backdrop label). |
 | `src/packs/` | Pack tooling: `validatePacks.mjs` (schema and language-coverage validator), `countryLiteralLint.mjs` (the country-literal lint CLI), `packCopy.ts` (the drift check for a checked-in copy of pack data). No schema, no data. |
 | `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version. The policy: [src/versioning/README.md](src/versioning/README.md). |
@@ -105,7 +105,8 @@ role and state on every control.
   shadow; dark mode has no shadow and a `border-hairline-dark` top edge instead. It keeps clear of the
   bottom safe area and the keyboard. The backdrop closes it; its accessibility label is the `kit`
   namespace's `close`, so it follows the app language. `SHEET_SCRIM_CLASSES` and
-  `SHEET_PANEL_CLASSES` carry the same chrome for route-based sheets.
+  `SHEET_PANEL_CLASSES` carry the same chrome for route-based sheets. `dark` gives it the dark treatment
+  (below), and `animationType` is `'slide'` unless the app passes `'none'` or `'fade'`.
 - `OptionRow` — the selection row of a picker: selected means a primary tint, a `link` label and a
   check mark (never colour alone), with radio semantics for screen readers. `grouped` rows sit flat in
   one card, with `divider` on every row but the first.
@@ -113,7 +114,9 @@ role and state on every control.
   its own state (a call-to-action lozenge, a done check, or a lock). Done and disabled rows are not
   pressable.
 - `ActionChip` — an outline pill that navigates or acts, with optional leading and trailing icons; a
-  40 dp lozenge with a hit slop that reaches the 48 dp floor.
+  40 dp lozenge with a hit slop that reaches the 48 dp floor. The trailing icon is `chevron-right` (opens
+  a screen) unless another is named; `trailingIcon={null}` leaves it out, for a chip that opens a field in
+  place. A label too long for its row wraps inside the pill, beside its icons.
 - `ChoiceChip` — one option of a pick-one group: selected is filled, unselected sits on
   `surface-sunken`; a 32 dp lozenge with a hit slop that reaches the 48 dp floor.
 - `Banner` — the single amber caution surface: icon, one line, optional action. `assertive` takes
@@ -139,6 +142,12 @@ role and state on every control.
 - `icons` — the single icon family: `ICON_NAMES` lists the MaterialCommunityIcons glyphs apps may
   use, and `IconName` is their union. Icons take token classes, so no colour value is copied out of
   the theme.
+- `darkTreatment` — `DarkTreatment` and `useDarkTreatment()`, for a surface that is dark in both themes,
+  such as a sheet over a camera. Inside the provider (or a `Sheet` with `dark`), `Sheet`, `Input`,
+  `ChoiceChip`, `ActionChip`, `OptionRow`, `ButtonPrimary` and `ButtonSecondary` show their dark-mode look
+  in the `-dark` tokens alone (`DARK_TREATMENT`); outside it they keep their paired classes. Other
+  primitives follow the app theme, so an app gives such a surface's own texts its own dark-only classes,
+  in a file its dark-pairing allowlist names.
 
 ## Family contracts
 

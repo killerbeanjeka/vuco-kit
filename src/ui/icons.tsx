@@ -82,6 +82,8 @@ export const ICON_NAMES = [
   // Kit 0.6.0 (vuco:walk Story 1.9): the selection bar's Move and Copy.
   'arrow-right',
   'content-copy',
+  // Kit 0.7.0 (vuco:walk Story 2.2): the item sheet's Due date chip.
+  'calendar-outline',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

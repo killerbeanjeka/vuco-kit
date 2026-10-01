@@ -1,6 +1,8 @@
 import { forwardRef, useState, type ReactNode } from 'react';
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
 
+import { DARK_TREATMENT, useDarkTreatment } from './darkTreatment';
+
 interface InputProps extends Omit<TextInputProps, 'className'> {
   /** Field label — a small uppercase caption ABOVE the field, and the field's a11y name. */
   label: string;
@@ -21,21 +23,38 @@ interface InputProps extends Omit<TextInputProps, 'className'> {
 // on focus; the focused field wears only the petrol focus RING (border → focus-ring). "Fields stay
 // neutral, the focused field wears the petrol focus ring." The 1.5dp boundary is always present
 // (sunlight visibility). The placeholder is the in-field prompt; an error switches the border and
-// adds a message below (text + colour, never colour alone).
+// adds a message below (text + colour, never colour alone). Under the dark treatment (kit 0.7.0) the field
+// shows its dark-mode look in both themes.
 export const Input = forwardRef<TextInput, InputProps>(function Input(
   { label, trailing, error, errorTestID, testID, onFocus, onBlur, value, placeholder, ...textInputProps },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const dark = useDarkTreatment();
+  const look = DARK_TREATMENT.input;
   const hasError = Boolean(error);
   const borderClass = hasError
-    ? 'border-status-overdue dark:border-status-overdue-dark'
+    ? dark
+      ? look.borderError
+      : 'border-status-overdue dark:border-status-overdue-dark'
     : focused
-      ? 'border-focus-ring dark:border-focus-ring-dark'
-      : 'border-border-input dark:border-border-input-dark';
+      ? dark
+        ? look.borderFocused
+        : 'border-focus-ring dark:border-focus-ring-dark'
+      : dark
+        ? look.border
+        : 'border-border-input dark:border-border-input-dark';
   const labelColor = hasError
-    ? 'text-status-overdue-text dark:text-status-overdue-text-dark'
-    : 'text-ink-secondary dark:text-ink-secondary-dark';
+    ? dark
+      ? look.labelError
+      : 'text-status-overdue-text dark:text-status-overdue-text-dark'
+    : dark
+      ? look.label
+      : 'text-ink-secondary dark:text-ink-secondary-dark';
+  const fill = dark ? look.fill : 'bg-surface-raised dark:bg-surface-raised-dark';
+  const textColor = dark
+    ? look.text
+    : 'text-ink-primary placeholder:text-ink-secondary dark:text-ink-primary-dark dark:placeholder:text-ink-secondary-dark';
 
   return (
     <View className="w-full gap-1.5">
@@ -43,7 +62,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           never ellipsizes (it is the field's only name besides the a11y label). */}
       <Text className={`font-meta text-meta uppercase ${labelColor}`}>{label}</Text>
       <View
-        className={`min-h-[56px] w-full flex-row items-center rounded-md border-[1.5px] bg-surface-raised px-4 dark:bg-surface-raised-dark ${borderClass}`}
+        className={`min-h-[56px] w-full flex-row items-center rounded-md border-[1.5px] px-4 ${fill} ${borderClass}`}
       >
         <TextInput
           ref={ref}
@@ -60,7 +79,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             setFocused(false);
             onBlur?.(event);
           }}
-          className="flex-1 font-field text-field text-ink-primary placeholder:text-ink-secondary dark:text-ink-primary-dark dark:placeholder:text-ink-secondary-dark"
+          className={`flex-1 font-field text-field ${textColor}`}
           {...textInputProps}
         />
         {trailing}
@@ -71,7 +90,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         <Text
           testID={errorTestID}
           accessibilityLiveRegion="polite"
-          className="font-body text-meta text-status-overdue-text dark:text-status-overdue-text-dark"
+          className={`font-body text-meta ${dark ? look.error : 'text-status-overdue-text dark:text-status-overdue-text-dark'}`}
         >
           {error}
         </Text>

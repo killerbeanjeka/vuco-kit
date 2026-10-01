@@ -93,7 +93,7 @@ jobs:
           npm pack --dry-run --json > "$RUNNER_TEMP/pack.json"
           node -e '
             const files = new Set(require(process.argv[1])[0].files.map((file) => file.path));
-            const primitives = ["ActionChip", "ActionRow", "Banner", "ButtonPrimary", "ButtonSecondary", "ChoiceChip", "ExplainerCard", "Input", "OptionRow", "ScreenFooter", "ScreenHeader", "SegmentedTabs", "Sheet", "bottomBarSpace", "icons"];
+            const primitives = ["ActionChip", "ActionRow", "Banner", "ButtonPrimary", "ButtonSecondary", "ChoiceChip", "ExplainerCard", "Input", "OptionRow", "ScreenFooter", "ScreenHeader", "SegmentedTabs", "Sheet", "bottomBarSpace", "darkTreatment", "icons"];
             const contracts = [
               "src/packs/validatePacks.mjs", "src/packs/countryLiteralLint.mjs", "src/packs/packCopy.ts",
               "src/versioning/appVersion.mjs", "src/versioning/README.md",

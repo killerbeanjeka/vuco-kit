@@ -1,5 +1,7 @@
 import { Pressable, Text } from 'react-native';
 
+import { DARK_TREATMENT, useDarkTreatment } from './darkTreatment';
+
 interface ButtonSecondaryProps {
   label: string;
   onPress: () => void;
@@ -21,8 +23,11 @@ interface ButtonSecondaryProps {
 // variant="danger": the destructive affordance — same quiet pill, but an overdue-red label on a
 // red-ringed transparent ground. Destruction warns in red; Workshop Orange stays the FAB's alone
 // and petrol stays the money's (one-loud-action doctrine — danger is DISTINCT, never LOUDER).
+// Under the dark treatment (kit 0.7.0) it shows its dark-mode look in both themes.
 export function ButtonSecondary({ label, onPress, disabled = false, testID, variant = 'default' }: ButtonSecondaryProps) {
   const danger = variant === 'danger';
+  const dark = useDarkTreatment();
+  const look = DARK_TREATMENT.buttonSecondary;
   return (
     <Pressable
       testID={testID}
@@ -33,18 +38,28 @@ export function ButtonSecondary({ label, onPress, disabled = false, testID, vari
       onPress={onPress}
       className={`min-h-[56px] w-full flex-row items-center justify-center rounded-full px-4 py-3 active:opacity-90 ${
         danger
-          ? 'border border-status-overdue/40 bg-transparent dark:border-status-overdue-dark/40'
-          : 'bg-primary-tonal dark:bg-primary-tonal-dark'
+          ? dark
+            ? look.fillDanger
+            : 'border border-status-overdue/40 bg-transparent dark:border-status-overdue-dark/40'
+          : dark
+            ? look.fill
+            : 'bg-primary-tonal dark:bg-primary-tonal-dark'
       }`}
     >
       <Text
         numberOfLines={2}
         className={`text-center font-heading text-heading ${
           disabled
-            ? 'text-ink-disabled dark:text-ink-disabled-dark'
+            ? dark
+              ? look.labelDisabled
+              : 'text-ink-disabled dark:text-ink-disabled-dark'
             : danger
-              ? 'text-status-overdue-text dark:text-status-overdue-text-dark'
-              : 'text-on-primary-tonal dark:text-on-primary-tonal-dark'
+              ? dark
+                ? look.labelDanger
+                : 'text-status-overdue-text dark:text-status-overdue-text-dark'
+              : dark
+                ? look.label
+                : 'text-on-primary-tonal dark:text-on-primary-tonal-dark'
         }`}
       >
         {label}

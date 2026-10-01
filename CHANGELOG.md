@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.7.0 — 2026-10-01
+
+The dark treatment for vuco:walk Story 2.2: the item sheet and the Location sheet over the camera, which are
+dark in both themes. Nothing under `tokens` or `config` changed.
+
+Upgrading an app: nothing to do. Every new prop is optional, and outside the treatment every primitive renders
+the classes it rendered before, except `ActionChip`'s label, which now shrinks to its row (a label that fits renders
+as before). The new icon name adds to `IconName`, where every existing name stays.
+
+- `src/ui/darkTreatment.tsx`: the `DarkTreatment` provider and `useDarkTreatment()`. Inside the provider,
+  `Sheet`, `Input`, `ChoiceChip`, `ActionChip`, `OptionRow`, `ButtonPrimary` and `ButtonSecondary` show their
+  dark-mode look in the `-dark` tokens alone (`DARK_TREATMENT`), whatever the app's theme: NativeWind's `dark:`
+  follows one app-wide colour scheme, so it cannot darken a single surface. These strings are the kit's only
+  single-mode classes, and the kit's `dark-pairing-allowlist.json` names this file with its reason; each
+  primitive keeps its paired classes in its own file, where the check still reads them.
+- `Sheet` takes `dark`, which puts its scrim and panel in the treatment and renders its children inside
+  `DarkTreatment` (a sheet inside `DarkTreatment` is treated too), and `animationType`: `'slide'` by default,
+  `'none'` on a surface where nothing animates.
+- `ActionChip`'s `trailingIcon` takes `null`, which leaves the trailing icon out, for a chip that opens a field
+  in place rather than a screen. Left out, it is still `chevron-right`.
+- `ActionChip`'s label shrinks to the room its row leaves: a label too long for the row wraps inside the pill,
+  where the trailing icon stays, instead of pushing that icon out of it (vuco:walk's location chip at font scale
+  2.0). A label that fits renders as before.
+- Icons: `calendar-outline` (a due date). The icon test checks that it is a MaterialCommunityIcons glyph and
+  listed once.
+- The pack guard in `kit-ci.yml` requires `src/ui/darkTreatment.tsx`.
+- Tests cover each primitive in each of its coloured states inside and outside the treatment, `Sheet`'s `dark`
+  and `animationType`, and `ActionChip` with its trailing icon left out, named and `null`.
+
 ## 0.6.0 — 2026-09-30
 
 TalkBack labels and icon names for vuco:walk Story 1.9: the Location sheet, the delete's move step and

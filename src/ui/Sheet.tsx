@@ -1,13 +1,22 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View, type ModalProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { DARK_TREATMENT, DarkTreatment, useDarkTreatment } from './darkTreatment';
 
 interface SheetProps {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
   testID?: string;
+  /**
+   * The dark treatment (kit 0.7.0): the scrim, the panel and every kit primitive inside the sheet take their
+   * `-dark` tokens in both themes, as over a camera. A sheet inside `DarkTreatment` takes it too.
+   */
+  dark?: boolean;
+  /** How the sheet comes and goes: `'slide'` by default, `'none'` on a surface where nothing animates (kit 0.7.0). */
+  animationType?: ModalProps['animationType'];
 }
 
 // Single source for the DESIGN.md sheet chrome — consumed here AND by
@@ -22,12 +31,15 @@ export const SHEET_PANEL_CLASSES =
 // border-hairline-dark top edge separates it tonally instead (dual-mode rule).
 // Safe-area bottom inset + keyboard avoidance added at first real consumer
 // (Story 2.2 sign-in — closing the 2.1 deferred-work item).
-export function Sheet({ visible, onClose, children, testID }: SheetProps) {
+// Under the dark treatment (kit 0.7.0) it shows its dark-mode chrome in both themes, and its children render
+// inside DarkTreatment.
+export function Sheet({ visible, onClose, children, testID, dark = false, animationType = 'slide' }: SheetProps) {
   const insets = useSafeAreaInsets();
   // The backdrop's word comes from the kit namespace, as ScreenHeader's does, so it follows the app language.
   const { t } = useTranslation('kit');
+  const treated = useDarkTreatment() || dark;
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType={animationType} onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 justify-end"
@@ -38,15 +50,15 @@ export function Sheet({ visible, onClose, children, testID }: SheetProps) {
           testID={testID ? `${testID}-backdrop` : undefined}
           accessibilityRole="button"
           accessibilityLabel={t('close')}
-          className={SHEET_SCRIM_CLASSES}
+          className={treated ? DARK_TREATMENT.sheet.scrim : SHEET_SCRIM_CLASSES}
           onPress={onClose}
         />
         <View
           testID={testID}
           style={{ paddingBottom: Math.max(insets.bottom, 24) }}
-          className={`${SHEET_PANEL_CLASSES} pt-4`}
+          className={`${treated ? DARK_TREATMENT.sheet.panel : SHEET_PANEL_CLASSES} pt-4`}
         >
-          {children}
+          {treated ? <DarkTreatment>{children}</DarkTreatment> : children}
         </View>
       </KeyboardAvoidingView>
     </Modal>

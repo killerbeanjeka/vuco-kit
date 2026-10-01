@@ -9,13 +9,14 @@ import { Banner } from '../../src/ui/Banner';
 import { ButtonPrimary } from '../../src/ui/ButtonPrimary';
 import { ButtonSecondary } from '../../src/ui/ButtonSecondary';
 import { ChoiceChip } from '../../src/ui/ChoiceChip';
+import { DARK_TREATMENT, DarkTreatment, useDarkTreatment } from '../../src/ui/darkTreatment';
 import { ExplainerCard } from '../../src/ui/ExplainerCard';
 import { ICON_NAMES, Icon } from '../../src/ui/icons';
 import { Input } from '../../src/ui/Input';
 import { OptionRow } from '../../src/ui/OptionRow';
 import { ScreenHeader } from '../../src/ui/ScreenHeader';
 import { SegmentedTabs } from '../../src/ui/SegmentedTabs';
-import { Sheet } from '../../src/ui/Sheet';
+import { SHEET_PANEL_CLASSES, SHEET_SCRIM_CLASSES, Sheet } from '../../src/ui/Sheet';
 
 jest.mock('expo-router', () => ({
   router: { canGoBack: jest.fn(() => true), back: jest.fn(), replace: jest.fn() },
@@ -419,7 +420,7 @@ describe('The kit namespace words (ScreenHeader back / close, Sheet backdrop)', 
   });
 });
 
-describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs; 0.6.0 move and copy)', () => {
+describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs; 0.6.0 move and copy; 0.7.0 the calendar)', () => {
   it('lists every name once, and each is a MaterialCommunityIcons glyph', () => {
     const { glyphMap } = Icon as unknown as { glyphMap: Record<string, number> };
     expect(ICON_NAMES.filter((name) => !(name in glyphMap))).toEqual([]);
@@ -431,5 +432,233 @@ describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and 
       expect.arrayContaining(['dots-vertical', 'drag-horizontal-variant', 'arrow-up', 'arrow-down', 'delete-outline']),
     );
     expect(ICON_NAMES).toEqual(expect.arrayContaining(['arrow-right', 'content-copy']));
+    expect(ICON_NAMES).toEqual(expect.arrayContaining(['calendar-outline']));
+  });
+});
+
+describe('ActionChip without its trailing icon (kit 0.7.0)', () => {
+  const { glyphMap } = Icon as unknown as { glyphMap: Record<string, number> };
+  const glyph = (name: string) => String.fromCodePoint(glyphMap[name]);
+  /** The glyphs and words the chip shows, in order. */
+  const shown = (testID: string) =>
+    screen
+      .getByTestId(testID)
+      .children.map((child) => (typeof child === 'string' ? child : child.children.join('')));
+
+  it('shows the chevron when left out, the given icon when named, and none for null', async () => {
+    await render(
+      <>
+        <ActionChip label="Terms" onPress={jest.fn()} testID="default" />
+        <ActionChip label="Language" trailingIcon="swap-horizontal" onPress={jest.fn()} testID="swap" />
+        <ActionChip label="Tiler" leadingIcon="tag-outline" trailingIcon={null} onPress={jest.fn()} testID="none" />
+      </>,
+    );
+    expect(shown('default')).toEqual(['Terms', glyph('chevron-right')]);
+    expect(shown('swap')).toEqual(['Language', glyph('swap-horizontal')]);
+    expect(shown('none')).toEqual([glyph('tag-outline'), 'Tiler']);
+  });
+
+  it('lets a long label shrink and wrap inside the pill, so the trailing icon stays in it', async () => {
+    await render(<ActionChip label="Block A › Floor 1 › Kitchen › Splashback" leadingIcon="map-marker-outline" onPress={jest.fn()} />);
+    expect(screen.getByText('Block A › Floor 1 › Kitchen › Splashback').props.className).toMatch(/(^|\s)shrink(\s|$)/);
+  });
+});
+
+describe('Sheet animationType (kit 0.7.0)', () => {
+  /** The Modal the sheet renders. */
+  const modal = () => {
+    const [found] = screen.container.queryAll((node) => node.type === 'Modal');
+    return found;
+  };
+
+  it('slides by default, and takes "none" for a surface where nothing animates', async () => {
+    const view = await render(
+      <Sheet visible onClose={jest.fn()} testID="sheet">
+        <Text>Content</Text>
+      </Sheet>,
+    );
+    expect(modal().props.animationType).toBe('slide');
+    await view.rerender(
+      <Sheet visible onClose={jest.fn()} testID="sheet" animationType="none">
+        <Text>Content</Text>
+      </Sheet>,
+    );
+    expect(modal().props.animationType).toBe('none');
+  });
+});
+
+describe('The dark treatment (kit 0.7.0)', () => {
+  const { colors } = jest.requireActual<{ theme: { colors: Record<string, unknown> } }>(
+    '../../tokens/out/vuco/nativewind-theme.cjs',
+  ).theme;
+  // The colour tokens with a -dark twin: outside the treatment each is paired with it, inside it only the twin shows.
+  const dualMode = new Set(Object.keys(colors).filter((name) => `${name}-dark` in colors));
+
+  /** Every primitive the treatment covers, in each state that has its own colours. */
+  function primitives() {
+    return (
+      <>
+        <Input label="Title" value="Cracked tile" onChangeText={jest.fn()} testID="input" />
+        <Input label="Due date" error="Enter the date as DD/MM/YYYY" errorTestID="input-error" testID="input-invalid" />
+        <ChoiceChip label="High" selected onPress={jest.fn()} testID="chip-selected" />
+        <ChoiceChip label="Low" selected={false} onPress={jest.fn()} testID="chip" />
+        <ActionChip label="Trade" leadingIcon="tag-outline" onPress={jest.fn()} testID="action" />
+        <OptionRow label="Kitchen" selected onPress={jest.fn()} testID="row-selected" />
+        <OptionRow label="Bathroom" selected={false} onPress={jest.fn()} grouped divider testID="row-grouped" />
+        <OptionRow label="Hall" selected={false} onPress={jest.fn()} testID="row" />
+        <ButtonPrimary label="Save and next" onPress={jest.fn()} chevron testID="primary" />
+        <ButtonPrimary label="Save" disabled onPress={jest.fn()} testID="primary-disabled" />
+        <ButtonSecondary label="Done with item" onPress={jest.fn()} testID="secondary" />
+        <ButtonSecondary label="Delete" variant="danger" onPress={jest.fn()} testID="secondary-danger" />
+        <ButtonSecondary label="Copy" disabled onPress={jest.fn()} testID="secondary-disabled" />
+      </>
+    );
+  }
+
+  /** The class strings of the rendered tree, the sheet's scrim left out (checked on its own). */
+  function classNames(): string[] {
+    return screen.container
+      .queryAll((node) => typeof node.props.className === 'string' && node.props.testID !== 'sheet-backdrop')
+      .map((node) => node.props.className as string);
+  }
+
+  /** The colour token a class names (`dark:placeholder:text-ink-secondary-dark` gives `ink-secondary-dark`), or null. */
+  function tokenOf(cls: string): string | null {
+    const utility = cls.split(':').at(-1) ?? '';
+    return /^(?:text|bg|border)-(.+?)(?:\/\d+)?$/.exec(utility)?.[1] ?? null;
+  }
+
+  /** Classes that follow the app theme or show a light token: none may be left inside the treatment. */
+  function themeBound(className: string): string[] {
+    return className
+      .split(/\s+/)
+      .filter((cls) => cls.split(':').includes('dark') || dualMode.has(tokenOf(cls) ?? ''));
+  }
+
+  /** Light tokens without their dark: twin in the same string: none may be left outside the treatment. */
+  function unpaired(className: string): string[] {
+    const classes = className.split(/\s+/).filter(Boolean);
+    return classes.filter((cls) => {
+      const variants = cls.split(':').slice(0, -1);
+      const kind = /^(text|bg|border)-/.exec(cls.split(':').at(-1) ?? '')?.[1];
+      const token = tokenOf(cls);
+      if (variants.includes('dark') || kind === undefined || token === null || !dualMode.has(token)) {
+        return false;
+      }
+      // The twin is the -dark token under the same variants, at any opacity (`bg-primary/10 dark:bg-primary-dark/15`).
+      const chain = variants.map((variant) => `${variant}:`).join('');
+      const twin = new RegExp(`^(?:dark:${chain}|${chain}dark:)${kind}-${token}-dark(?:/\\d+)?$`);
+      return !classes.some((other) => twin.test(other));
+    });
+  }
+
+  it('leaves every primitive in its paired classes outside the treatment', async () => {
+    await render(primitives());
+
+    const names = classNames();
+    expect(names.flatMap(unpaired)).toEqual([]);
+    // Every coloured class string carries its dark: twins, so the app theme still picks the mode.
+    expect(names.filter((name) => /\b(text|bg|border)-/.test(name) && !name.includes('dark:'))).toEqual([]);
+    expect(screen.getByTestId('input').props.className).toContain(
+      'text-ink-primary placeholder:text-ink-secondary dark:text-ink-primary-dark dark:placeholder:text-ink-secondary-dark',
+    );
+  });
+
+  it('renders every primitive inside DarkTreatment in its -dark tokens alone, whatever the app theme', async () => {
+    await render(<DarkTreatment>{primitives()}</DarkTreatment>);
+
+    expect(classNames().flatMap(themeBound)).toEqual([]);
+    // Each state shows its dark-mode look.
+    const field = screen.getByTestId('input').parent?.props.className as string;
+    expect(screen.getByTestId('input').props.className).toContain(DARK_TREATMENT.input.text);
+    expect(field).toContain(DARK_TREATMENT.input.fill);
+    expect(field).toContain(DARK_TREATMENT.input.border);
+    expect(screen.getByTestId('input-invalid').parent?.props.className).toContain(DARK_TREATMENT.input.borderError);
+    expect(screen.getByTestId('input-error').props.className).toContain(DARK_TREATMENT.input.error);
+    expect(screen.getByText('Due date').props.className).toContain(DARK_TREATMENT.input.labelError);
+    expect(screen.getByText('Title').props.className).toContain(DARK_TREATMENT.input.label);
+    expect(screen.getByTestId('chip-selected').props.className).toContain(DARK_TREATMENT.choiceChip.selected);
+    expect(screen.getByText('High').props.className).toContain(DARK_TREATMENT.choiceChip.labelSelected);
+    expect(screen.getByTestId('chip').props.className).toContain(DARK_TREATMENT.choiceChip.unselected);
+    expect(screen.getByText('Low').props.className).toContain(DARK_TREATMENT.choiceChip.label);
+    expect(screen.getByTestId('action').props.className).toContain(DARK_TREATMENT.actionChip.border);
+    expect(screen.getByText('Trade').props.className).toContain(DARK_TREATMENT.actionChip.label);
+    expect(screen.getByTestId('row-selected').props.className).toContain(DARK_TREATMENT.optionRow.selected);
+    expect(screen.getByText('Kitchen').props.className).toContain(DARK_TREATMENT.optionRow.labelSelected);
+    expect(screen.getByTestId('row-grouped').props.className).toContain(DARK_TREATMENT.optionRow.divider);
+    expect(screen.getByTestId('row').props.className).toContain(DARK_TREATMENT.optionRow.unselected);
+    expect(screen.getByText('Hall').props.className).toContain(DARK_TREATMENT.optionRow.label);
+    expect(screen.getByTestId('primary').props.className).toContain(DARK_TREATMENT.buttonPrimary.fill);
+    expect(screen.getByText('Save and next').props.className).toContain(DARK_TREATMENT.buttonPrimary.label);
+    expect(screen.getByText('›').props.className).toContain(DARK_TREATMENT.buttonPrimary.label);
+    expect(screen.getByTestId('primary-disabled').props.className).toContain(DARK_TREATMENT.buttonPrimary.fillDisabled);
+    expect(screen.getByText('Save').props.className).toContain(DARK_TREATMENT.buttonPrimary.labelDisabled);
+    expect(screen.getByTestId('secondary').props.className).toContain(DARK_TREATMENT.buttonSecondary.fill);
+    expect(screen.getByText('Done with item').props.className).toContain(DARK_TREATMENT.buttonSecondary.label);
+    expect(screen.getByTestId('secondary-danger').props.className).toContain(DARK_TREATMENT.buttonSecondary.fillDanger);
+    expect(screen.getByText('Delete').props.className).toContain(DARK_TREATMENT.buttonSecondary.labelDanger);
+    expect(screen.getByText('Copy').props.className).toContain(DARK_TREATMENT.buttonSecondary.labelDisabled);
+  });
+
+  it("rings a focused field in the focus ring's -dark twin under the treatment", async () => {
+    await render(
+      <DarkTreatment>
+        <Input label="Title" testID="input" />
+      </DarkTreatment>,
+    );
+    await fireEvent(screen.getByTestId('input'), 'focus');
+    const field = screen.getByTestId('input').parent?.props.className as string;
+    expect(field).toContain(DARK_TREATMENT.input.borderFocused);
+    expect(themeBound(field)).toEqual([]);
+  });
+
+  it('puts a Sheet with `dark` in the treatment: its scrim, its panel and the primitives inside it', async () => {
+    await render(
+      <Sheet visible dark onClose={jest.fn()} testID="sheet">
+        {primitives()}
+      </Sheet>,
+    );
+
+    expect(screen.getByTestId('sheet-backdrop').props.className).toBe(DARK_TREATMENT.sheet.scrim);
+    expect(screen.getByTestId('sheet').props.className).toBe(`${DARK_TREATMENT.sheet.panel} pt-4`);
+    expect(classNames().flatMap(themeBound)).toEqual([]);
+    expect(screen.getByTestId('chip-selected').props.className).toContain(DARK_TREATMENT.choiceChip.selected);
+  });
+
+  it('treats a Sheet inside DarkTreatment too, and leaves a plain Sheet in the app theme', async () => {
+    const view = await render(
+      <DarkTreatment>
+        <Sheet visible onClose={jest.fn()} testID="sheet">
+          <Input label="Title" testID="input" />
+        </Sheet>
+      </DarkTreatment>,
+    );
+    expect(screen.getByTestId('sheet').props.className).toBe(`${DARK_TREATMENT.sheet.panel} pt-4`);
+    expect(classNames().flatMap(themeBound)).toEqual([]);
+
+    await view.rerender(
+      <Sheet visible onClose={jest.fn()} testID="sheet">
+        <Input label="Title" testID="input" />
+      </Sheet>,
+    );
+    expect(screen.getByTestId('sheet-backdrop').props.className).toBe(SHEET_SCRIM_CLASSES);
+    expect(screen.getByTestId('sheet').props.className).toBe(`${SHEET_PANEL_CLASSES} pt-4`);
+    expect(classNames().flatMap(unpaired)).toEqual([]);
+  });
+
+  it('is off outside the provider and on inside it', async () => {
+    function Probe({ testID }: { testID: string }) {
+      return <Text testID={testID}>{String(useDarkTreatment())}</Text>;
+    }
+    await render(
+      <>
+        <Probe testID="outside" />
+        <DarkTreatment>
+          <Probe testID="inside" />
+        </DarkTreatment>
+      </>,
+    );
+    expect(screen.getByTestId('outside')).toHaveTextContent('false');
+    expect(screen.getByTestId('inside')).toHaveTextContent('true');
   });
 });

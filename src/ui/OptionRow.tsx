@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text } from 'react-native';
 
+import { DARK_TREATMENT, useDarkTreatment } from './darkTreatment';
 import { Icon } from './icons';
 
 interface OptionRowProps {
@@ -29,7 +30,8 @@ interface OptionRowProps {
 // The selection row of the picker primitive (language, theme, tax). Selected = petrol tint + a
 // `link`-petrol label + a vector check (never colour alone, NFR-1 — the check is the shape signal).
 // Standalone it is a filled raised pill; `grouped` folds it into one hairline-divided card. The row
-// is a ≥48dp target (min-height 56, grows with fontScale).
+// is a ≥48dp target (min-height 56, grows with fontScale). Under the dark treatment (kit 0.7.0) it shows its
+// dark-mode look in both themes.
 export function OptionRow({
   label,
   selected,
@@ -40,6 +42,8 @@ export function OptionRow({
   accessibilityLabel,
   testID,
 }: OptionRowProps) {
+  const dark = useDarkTreatment();
+  const look = DARK_TREATMENT.optionRow;
   return (
     <Pressable
       testID={testID}
@@ -50,21 +54,29 @@ export function OptionRow({
       className={`min-h-[56px] w-full flex-row items-center gap-3 px-4 py-3 active:opacity-90 ${
         grouped ? '' : 'rounded-xl'
       } ${
-        grouped && divider ? 'border-t border-border-hairline dark:border-border-hairline-dark' : ''
+        grouped && divider ? (dark ? look.divider : 'border-t border-border-hairline dark:border-border-hairline-dark') : ''
       } ${
         selected
-          ? 'bg-primary/10 dark:bg-primary-dark/15'
+          ? dark
+            ? look.selected
+            : 'bg-primary/10 dark:bg-primary-dark/15'
           : grouped
             ? 'bg-transparent'
-            : 'bg-surface-raised dark:bg-surface-raised-dark'
+            : dark
+              ? look.unselected
+              : 'bg-surface-raised dark:bg-surface-raised-dark'
       }`}
     >
       {leading}
       <Text
         className={`flex-1 font-body text-body ${
           selected
-            ? 'text-link dark:text-link-dark'
-            : 'text-ink-primary dark:text-ink-primary-dark'
+            ? dark
+              ? look.labelSelected
+              : 'text-link dark:text-link-dark'
+            : dark
+              ? look.label
+              : 'text-ink-primary dark:text-ink-primary-dark'
         }`}
       >
         {label}
@@ -74,7 +86,7 @@ export function OptionRow({
           testID={testID ? `${testID}-check` : undefined}
           name="check"
           size={20}
-          className="text-link dark:text-link-dark"
+          className={dark ? look.check : 'text-link dark:text-link-dark'}
         />
       ) : null}
     </Pressable>
