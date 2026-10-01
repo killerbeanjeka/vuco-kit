@@ -84,6 +84,11 @@ export const ICON_NAMES = [
   'content-copy',
   // Kit 0.7.0 (vuco:walk Story 2.2): the item sheet's Due date chip.
   'calendar-outline',
+  // Kit 0.8.0 (vuco:walk Story 2.5): stored descriptions. A saved description's mark, "Save for later" and
+  // "Remove from saved".
+  'bookmark-outline',
+  'bookmark-plus-outline',
+  'bookmark-remove-outline',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

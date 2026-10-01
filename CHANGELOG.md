@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 — 2026-10-01
+
+Icon names for vuco:walk Story 2.5, stored descriptions, and the dark treatment's rule in `AGENTS.md`. Nothing
+under `tokens` or `config`, and no component, changed.
+
+Upgrading an app: nothing to do. The new names add to `IconName`, and every existing name stays.
+
+- Icons: `bookmark-outline` (a saved description's mark), `bookmark-plus-outline` ("Save for later") and
+  `bookmark-remove-outline` ("Remove from saved"). The icon test checks that each is a MaterialCommunityIcons
+  glyph and listed once.
+- `AGENTS.md`: a surface that is dark in both themes takes the dark treatment (`Sheet`'s `dark` or
+  `DarkTreatment`) rather than hand-rolled `-dark` classes on the primitives, and its own texts take dark-only
+  classes from one file the app's allowlist names (vuco:walk Story 2.2's review).
+
 ## 0.7.0 — 2026-10-01
 
 The dark treatment for vuco:walk Story 2.2: the item sheet and the Location sheet over the camera, which are

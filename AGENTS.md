@@ -45,6 +45,11 @@ older SDK did.
   chain (`bg-surface-base dark:bg-surface-base-dark`). Run `tokens/check-dark-pairing.mjs` over the
   app's source in CI; a surface that is single-mode on purpose goes in the app's allowlist with its
   reason.
+- A surface that is dark in both themes, such as a sheet over a camera, takes the dark treatment
+  (`@vuco/kit/src/ui/darkTreatment`): a `Sheet` with `dark`, or `DarkTreatment` around the surface,
+  gives the kit primitives inside it their dark-mode look. Never hand-roll the primitives' `-dark`
+  classes. The surface's own texts take dark-only classes from one file that the app's allowlist
+  names, with its reason.
 - Money amounts use a money type role with tabular figures and stay fully visible — never
   truncated, ellipsized or greyed out.
 
