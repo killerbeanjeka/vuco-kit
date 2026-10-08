@@ -1,2 +1,4 @@
 * text=auto eol=lf
 *.ttf binary
+# Upstream licence files ship byte for byte (Fixel Text: CRLF upstream, blob 7c61bd88).
+tokens/fonts/FixelText-OFL.txt -text

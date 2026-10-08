@@ -1,5 +1,12 @@
 import { Pressable, Text, View } from 'react-native';
 
+import { FONT_ROLE_VARS } from '../fonts/fontRoleVars';
+
+// The count's tabular figures need Plus Jakarta Sans in every App Language (kit 0.9.0): the meta
+// role's face follows the language, and the Cyrillic face's tabular digits are not uniform. The
+// inline fontFamily overrides the class's.
+const TABULAR_COUNT_FACE = { fontFamily: FONT_ROLE_VARS.latin['--font-meta'] } as const;
+
 // Underline tab bar (VAPP-77): a reusable in-screen segmented control — one selected, a 2 dp azure
 // underline carries "active" so it is never colour-alone, with an optional count badge. The chase
 // queue (To approve / Decided) is the first consumer; the shape is generic (label + key + badge).
@@ -50,7 +57,10 @@ export function SegmentedTabs({
             </Text>
             {tab.badge !== undefined && tab.badge > 0 ? (
               <View className="min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-2 dark:bg-primary-dark/15">
-                <Text className="font-meta text-meta tabular-nums text-link dark:text-link-dark">
+                <Text
+                  className="font-meta text-meta tabular-nums text-link dark:text-link-dark"
+                  style={TABULAR_COUNT_FACE}
+                >
                   {tab.badge}
                 </Text>
               </View>

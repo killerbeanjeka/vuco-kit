@@ -4,8 +4,15 @@
 import '@formatjs/intl-getcanonicallocales/polyfill-force.js';
 import '@formatjs/intl-locale/polyfill-force.js';
 import '@formatjs/intl-pluralrules/polyfill-force.js';
+// One plural locale-data file per language the kit has words for. Without its file a language
+// resolves only `one` and `other`, and i18next silently drops its `few` and `many` forms.
 import '@formatjs/intl-pluralrules/locale-data/en.js';
 import '@formatjs/intl-pluralrules/locale-data/de.js';
+import '@formatjs/intl-pluralrules/locale-data/es.js';
+import '@formatjs/intl-pluralrules/locale-data/pl.js';
+import '@formatjs/intl-pluralrules/locale-data/ro.js';
+import '@formatjs/intl-pluralrules/locale-data/tr.js';
+import '@formatjs/intl-pluralrules/locale-data/uk.js';
 
 import { getLocales } from 'expo-localization';
 import i18n from 'i18next';
@@ -13,9 +20,14 @@ import { initReactI18next } from 'react-i18next';
 
 import de from './de.json';
 import en from './en.json';
+import es from './es.json';
+import pl from './pl.json';
+import ro from './ro.json';
+import tr from './tr.json';
+import uk from './uk.json';
 
 // The words the kit's own primitives render (ScreenHeader's back / close labels), per language.
-const KIT_STRINGS: Record<string, Record<string, string>> = { en, de };
+const KIT_STRINGS: Record<string, Record<string, string>> = { en, de, es, pl, ro, tr, uk };
 
 export interface CreateI18nOptions {
   /** The app's strings, one bundle per language; each becomes that language's `translation` namespace. */
@@ -29,10 +41,17 @@ export interface CreateI18nOptions {
  * and the pre-choice UI language). getLocales() is synchronous, so createI18n
  * starts in it; an app that stores the user's choice applies it on top, before
  * first paint.
+ *
+ * The first device locale's language code is matched exactly against `supported`; anything else,
+ * including a device that cannot report its locales, gets English, the base language. Called with
+ * no argument it matches English and German, as every kit before 0.9.0 did.
  */
-export function deviceBestMatchLanguage(): 'en' | 'de' {
+export function deviceBestMatchLanguage(): 'en' | 'de';
+export function deviceBestMatchLanguage<L extends string>(supported: readonly L[]): L | 'en';
+export function deviceBestMatchLanguage(supported: readonly string[] = ['en', 'de']): string {
   try {
-    return getLocales()[0]?.languageCode === 'de' ? 'de' : 'en';
+    const code = getLocales()[0]?.languageCode;
+    return typeof code === 'string' && supported.includes(code) ? code : 'en';
   } catch {
     return 'en'; // English is the base locale — never block boot on locale detection
   }
@@ -41,8 +60,9 @@ export function deviceBestMatchLanguage(): 'en' | 'de' {
 /**
  * Initialises the default i18next instance — the App Language mechanism (AD-13) — with the app's
  * strings in the default `translation` namespace and the kit's strings in `kit`, and returns it.
- * Call it once, at app start. Document text rendered on the device uses `getFixedT(documentLanguage)`
- * on this same instance; the server's pack wordings are a separate system.
+ * Call it once, at app start. It starts in the device language when the app has a bundle for it,
+ * else in English. Document text rendered on the device uses `getFixedT(documentLanguage)` on this
+ * same instance; the server's pack wordings are a separate system.
  */
 export function createI18n({ resources, fallbackLng }: CreateI18nOptions) {
   const merged = Object.fromEntries(
@@ -53,7 +73,7 @@ export function createI18n({ resources, fallbackLng }: CreateI18nOptions) {
     .use(initReactI18next)
     .init({
       resources: merged,
-      lng: deviceBestMatchLanguage(),
+      lng: deviceBestMatchLanguage(Object.keys(resources)),
       fallbackLng, // missing de keys render English — never raw keys (AR-15)
       interpolation: { escapeValue: false },
     })

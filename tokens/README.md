@@ -52,6 +52,14 @@ digits uniformly 600/1000 upem) — Plus Jakarta Sans is the money role in all t
 renderers; the Inter fallback was not needed. See `fonts/README.md`. The generator maps the
 money role from `font-verdict.json` — never edit the mapping by hand.
 
+**Kit 0.9.0: the text roles of a Cyrillic App Language.** The NativeWind theme backs the six text
+roles with a CSS variable whose fallback is their Plus Jakarta Sans face
+(`var(--font-body, PlusJakartaSans-Regular)`); `src/fonts/fontRoleVars.ts` names the Latin and the
+Cyrillic (Fixel Text) faces an app sets them to. The money roles stay static, and the Hosted Page CSS
+and the QuestPDF class do not change. `check-tnum.mjs` gates the money verdict on the Plus Jakarta
+Sans faces alone and records the Fixel Text faces in `font-verdict.json` (`cyrillicTextFaces`)
+without gating on them.
+
 ## Changing tokens
 
 1. Edit `base.tokens.yaml` or `brands/<brand>.yaml`, and re-verify the contrast table in the

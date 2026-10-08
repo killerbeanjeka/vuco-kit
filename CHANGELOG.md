@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.9.0 — 2026-10-08
+
+Five more languages and a Cyrillic text face, for vuco Story 16.1 (App Languages Ukrainian, Polish,
+Romanian, Turkish and Spanish). The Hosted Page CSS, the QuestPDF class and the money roles did not
+change.
+
+Upgrading an app: nothing to do for an app that keeps its languages and Latin text. Calling
+`deviceBestMatchLanguage()` with no argument still matches English and German only, `createI18n` still
+starts in English for a device language the app has no bundle for, and every text role falls back to
+the Plus Jakarta Sans face it used before. An app that adds a language passes its bundle to
+`createI18n`; an app with a Cyrillic App Language also embeds the Fixel Text weights and sets the font
+variables (README, "Theme and fonts").
+
+- `src/i18n`: the plural rules polyfill loads locale data for `es`, `pl`, `ro`, `tr` and `uk` as well,
+  so i18next resolves their `few` and `many` forms; the `kit` namespace has its words in those five
+  languages. `deviceBestMatchLanguage(supported)` matches the first device locale's language code
+  exactly against the app's list and returns English otherwise; with no argument it is unchanged.
+  `createI18n` starts in the device language when `resources` has a bundle for it.
+- Fonts: Fixel Text (MacPaw with AlfaBravo, Kyiv; SIL OFL 1.1, `tokens/fonts/FixelText-OFL.txt`), five
+  static weights `tokens/fonts/FixelText-<Weight>.ttf`, upstream files with one edit, `OS/2.usWidthClass`
+  4 → 5 (provenance and hashes in `tokens/fonts/README.md`).
+- Tokens: the NativeWind theme's six text roles read `var(--font-<role>, PlusJakartaSans-<Weight>)`; the
+  money roles stay `PlusJakartaSans-Bold`. `src/fonts/fontRoleVars.ts` exports `FONT_ROLE_VARS.latin`
+  (the fallbacks) and `FONT_ROLE_VARS.cyrillic` (Fixel Text at the same weights), which an app sets with
+  NativeWind's `vars()` on a View above its screens.
+- `check-tnum.mjs`: the money verdict covers the Plus Jakarta Sans faces only; the Fixel Text faces are
+  required and recorded in `font-verdict.json` (`cyrillicTextFaces`: Ukrainian letters, PostScript name,
+  width class, `tnum`, digit advances, no U+00A0) without gating on them; a font file no role maps to
+  fails the check.
+- `SegmentedTabs`: the count pins Plus Jakarta Sans Medium inline, so its tabular figures stay uniform in
+  every App Language.
+- The pack guard in `kit-ci.yml` requires the Fixel Text files and licence, `src/fonts/fontRoleVars.ts`
+  and the five new `src/i18n` bundles.
+- Tests: the kit words in seven languages, the plural categories of each, the list-aware device match,
+  the font-role variables against the generated theme, and the pinned count.
+
 ## 0.8.0 — 2026-10-01
 
 Icon names for vuco:walk Story 2.5, stored descriptions, and the dark treatment's rule in `AGENTS.md`. Nothing

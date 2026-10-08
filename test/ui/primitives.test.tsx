@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { createRef } from 'react';
-import { Text, type TextInput } from 'react-native';
+import { StyleSheet, Text, type TextInput } from 'react-native';
 
 import { createI18n } from '../../src/i18n';
 import { ActionChip } from '../../src/ui/ActionChip';
@@ -338,6 +338,21 @@ describe('SegmentedTabs (VAPP-77 underline tabs)', () => {
     expect(screen.getByTestId('tabs-decided').props.accessibilityState).toMatchObject({ selected: false });
     await fireEvent.press(screen.getByTestId('tabs-decided'));
     expect(onChange).toHaveBeenCalledWith('decided');
+  });
+
+  it('pins the count to Plus Jakarta Sans Medium, whose tabular digits are uniform, while the label follows the meta role (kit 0.9.0)', async () => {
+    await render(
+      <SegmentedTabs
+        testID="tabs"
+        activeKey="pending"
+        onChange={() => undefined}
+        tabs={[{ key: 'pending', label: 'To approve', badge: 22 }]}
+      />,
+    );
+    const count = screen.getByText('22');
+    expect(count.props.className).toMatch(/(^|\s)tabular-nums(\s|$)/);
+    expect(StyleSheet.flatten(count.props.style)).toMatchObject({ fontFamily: 'PlusJakartaSans-Medium' });
+    expect(StyleSheet.flatten(screen.getByText('To approve').props.style)?.fontFamily).toBeUndefined();
   });
 });
 

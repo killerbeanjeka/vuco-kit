@@ -267,9 +267,15 @@ async function main() {
     return `{\n${entries.join("\n")}\n${pad}}`;
   }
 
+  // Text roles resolve through a CSS variable (kit 0.9.0), so an app can switch their faces per App
+  // Language by setting the variables on a root View (src/fonts/fontRoleVars.ts); the fallback is the
+  // role's own face, so an app that sets nothing renders exactly as before. Money roles stay static:
+  // money is Plus Jakarta Sans in every language (AR-24).
   const nwTheme = {
     colors: Object.fromEntries(Object.entries(fm.colors)),
-    fontFamily: Object.fromEntries(Object.entries(roles).map(([r, d]) => [r, [d.rnFamily]])),
+    fontFamily: Object.fromEntries(
+      Object.entries(roles).map(([r, d]) => [r, [r.startsWith("money") ? d.rnFamily : `var(--font-${r}, ${d.rnFamily})`]]),
+    ),
     fontSize: Object.fromEntries(
       Object.entries(roles).map(([r, d]) => {
         /** @type {{ lineHeight: string, letterSpacing?: string }} */

@@ -105,5 +105,151 @@
   ],
   "tnumConfirmed": true,
   "moneyFontFamily": "Plus Jakarta Sans",
-  "moneyFontPostscript": "PlusJakartaSans-Bold"
+  "moneyFontPostscript": "PlusJakartaSans-Bold",
+  "cyrillicTextFaces": {
+    "verifiedOn": "2026-10-08",
+    "use": "the text roles (display, title, heading, body, field, meta) of a Cyrillic App Language; money stays Plus Jakarta Sans",
+    "gated": false,
+    "method": "fontkit 2.0.4: cmap coverage of а–я plus і ї є ґ, name and OS/2 tables, GSUB tnum presence, tabular digit advances",
+    "fonts": [
+      {
+        "file": "FixelText-Bold.ttf",
+        "family": "Fixel Text Bold",
+        "postscriptName": "FixelText-Bold",
+        "postscriptMatchesFile": true,
+        "usWidthClass": 5,
+        "usWeightClass": 700,
+        "ukrainianLettersMissing": "",
+        "hasTnum": true,
+        "tabularDigitAdvances": [
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600
+        ],
+        "hasNoBreakSpace": false,
+        "notes": [
+          "kerning moves tabular digits when laid out: four.tf before five.tf by 16",
+          "no U+00A0 (no-break space) glyph"
+        ]
+      },
+      {
+        "file": "FixelText-ExtraBold.ttf",
+        "family": "Fixel Text Extra Bold",
+        "postscriptName": "FixelText-ExtraBold",
+        "postscriptMatchesFile": true,
+        "usWidthClass": 5,
+        "usWeightClass": 800,
+        "ukrainianLettersMissing": "",
+        "hasTnum": true,
+        "tabularDigitAdvances": [
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600
+        ],
+        "hasNoBreakSpace": false,
+        "notes": [
+          "kerning moves tabular digits when laid out: four.tf before five.tf by 18",
+          "no U+00A0 (no-break space) glyph"
+        ]
+      },
+      {
+        "file": "FixelText-Medium.ttf",
+        "family": "Fixel Text Medium",
+        "postscriptName": "FixelText-Medium",
+        "postscriptMatchesFile": true,
+        "usWidthClass": 5,
+        "usWeightClass": 500,
+        "ukrainianLettersMissing": "",
+        "hasTnum": true,
+        "tabularDigitAdvances": [
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          599
+        ],
+        "hasNoBreakSpace": false,
+        "notes": [
+          "tabular digits are 600/1000 except nine.tf is 599",
+          "kerning moves tabular digits when laid out: four.tf before five.tf by 12",
+          "no U+00A0 (no-break space) glyph"
+        ]
+      },
+      {
+        "file": "FixelText-Regular.ttf",
+        "family": "Fixel Text Regular",
+        "postscriptName": "FixelText-Regular",
+        "postscriptMatchesFile": true,
+        "usWidthClass": 5,
+        "usWeightClass": 400,
+        "ukrainianLettersMissing": "",
+        "hasTnum": true,
+        "tabularDigitAdvances": [
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          599
+        ],
+        "hasNoBreakSpace": false,
+        "notes": [
+          "tabular digits are 600/1000 except nine.tf is 599",
+          "kerning moves tabular digits when laid out: four.tf before five.tf by 10",
+          "no U+00A0 (no-break space) glyph"
+        ]
+      },
+      {
+        "file": "FixelText-SemiBold.ttf",
+        "family": "Fixel Text Semi Bold",
+        "postscriptName": "FixelText-SemiBold",
+        "postscriptMatchesFile": true,
+        "usWidthClass": 5,
+        "usWeightClass": 600,
+        "ukrainianLettersMissing": "",
+        "hasTnum": true,
+        "tabularDigitAdvances": [
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          600,
+          599
+        ],
+        "hasNoBreakSpace": false,
+        "notes": [
+          "tabular digits are 600/1000 except nine.tf is 599",
+          "kerning moves tabular digits when laid out: four.tf before five.tf by 14",
+          "no U+00A0 (no-break space) glyph"
+        ]
+      }
+    ]
+  }
 }

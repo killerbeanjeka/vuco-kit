@@ -99,11 +99,14 @@ jobs:
               "src/versioning/appVersion.mjs", "src/versioning/README.md",
               "src/vuco-file/index.ts", "src/vuco-file/types.ts", "src/vuco-file/validate.ts", "src/vuco-file/fixtures.ts", "src/vuco-file/README.md",
             ];
-            const required = ["Regular", "Medium", "SemiBold", "Bold", "ExtraBold"]
-              .map((weight) => `tokens/fonts/PlusJakartaSans-${weight}.ttf`)
-              .concat(["tokens/fonts/OFL.txt", "tokens/out/vuco/nativewind-theme.cjs", "tokens/out/vuco/tokens.css", "tokens/out/vuco/VucoDesignTokens.g.cs"])
+            const weights = ["Regular", "Medium", "SemiBold", "Bold", "ExtraBold"];
+            const required = weights
+              .flatMap((weight) => [`tokens/fonts/PlusJakartaSans-${weight}.ttf`, `tokens/fonts/FixelText-${weight}.ttf`])
+              .concat(["tokens/fonts/OFL.txt", "tokens/fonts/FixelText-OFL.txt", "tokens/out/vuco/nativewind-theme.cjs", "tokens/out/vuco/tokens.css", "tokens/out/vuco/VucoDesignTokens.g.cs"])
               .concat(primitives.map((name) => `src/ui/${name}.tsx`))
-              .concat(["src/i18n/index.ts", "src/i18n/en.json", "src/i18n/de.json", "config/eslint.base.js", "config/tsconfig.base.json", "AGENTS.md"])
+              .concat(["src/fonts/fontRoleVars.ts", "src/i18n/index.ts"])
+              .concat(["en", "de", "es", "pl", "ro", "tr", "uk"].map((language) => `src/i18n/${language}.json`))
+              .concat(["config/eslint.base.js", "config/tsconfig.base.json", "AGENTS.md"])
               .concat(contracts);
             const missing = required.filter((path) => !files.has(path));
             if (missing.length) {
@@ -117,6 +120,7 @@ jobs:
             const layout = [
               /^(package\.json|README\.md|LICENSE|AGENTS\.md)$/,
               /^src\/ui\/[A-Za-z]+\.tsx$/,
+              /^src\/fonts\/fontRoleVars\.ts$/,
               /^src\/i18n\/(index\.ts|[a-z]{2}\.json)$/,
               /^src\/packs\/(validatePacks\.mjs|countryLiteralLint\.mjs|packCopy\.ts)$/,
               /^src\/versioning\/(appVersion\.mjs|README\.md)$/,

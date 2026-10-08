@@ -21,11 +21,12 @@ Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says w
 | `tokens/brands/<brand>.yaml` | One brand: fills every `null` slot of the base and nothing else. |
 | `tokens/generate-tokens.mjs` | `--brand <name>` writes `tokens/out/<name>/`; `--check` is the staleness gate. |
 | `tokens/out/vuco/` | Committed vuco outputs: NativeWind theme, Hosted Page CSS, QuestPDF C# class. |
-| `tokens/fonts/` | Plus Jakarta Sans 2.7.1, five static weights, SIL OFL 1.1 (`OFL.txt`). |
-| `tokens/check-tnum.mjs` | Verifies tabular figures for the money role; writes `font-verdict.json`. |
+| `tokens/fonts/` | Plus Jakarta Sans 2.7.1, five static weights (`OFL.txt`), and Fixel Text, five static weights for the text roles of a Cyrillic App Language (`FixelText-OFL.txt`); both SIL OFL 1.1. Provenance: [tokens/fonts/README.md](tokens/fonts/README.md). |
+| `tokens/check-tnum.mjs` | Verifies tabular figures for the money role and records the Cyrillic text faces (not gated); writes `font-verdict.json`. |
 | `tokens/check-dark-pairing.mjs` | CLI for consumers: every dual-mode colour token is used with its `-dark` twin. |
 | `src/ui/<Name>.tsx` | The cross-app UI primitives — `ButtonPrimary`, `ButtonSecondary`, `Input`, `Sheet`, `OptionRow`, `ActionRow`, `ActionChip`, `ChoiceChip`, `Banner`, `ScreenHeader`, `ScreenFooter`, `SegmentedTabs`, `ExplainerCard`, `icons`, `bottomBarSpace`, `darkTreatment` — as TypeScript source styled with the token classes. Contracts: [below](#primitive-contracts). |
-| `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage()`; `en.json` and `de.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels and Sheet's backdrop label). |
+| `src/fonts/fontRoleVars.ts` | `FONT_ROLE_VARS.latin` and `.cyrillic`: the faces behind the text roles' CSS variables, which an app sets with NativeWind's `vars()` to switch the text roles per App Language. |
+| `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage(supported?)`, with plural rules for every language below; `en.json`, `de.json`, `es.json`, `pl.json`, `ro.json`, `tr.json` and `uk.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels and Sheet's backdrop label). |
 | `src/packs/` | Pack tooling: `validatePacks.mjs` (schema and language-coverage validator), `countryLiteralLint.mjs` (the country-literal lint CLI), `packCopy.ts` (the drift check for a checked-in copy of pack data). No schema, no data. |
 | `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version. The policy: [src/versioning/README.md](src/versioning/README.md). |
 | `src/vuco-file/` | The `.vuco` hand-over bundle: manifest types, a validator and synthetic fixtures. The format: [src/vuco-file/README.md](src/vuco-file/README.md). |
@@ -57,7 +58,15 @@ in six places:
 - **Theme and fonts** — `tailwind.config.js` extends its theme with
   `require('@vuco/kit/tokens/out/vuco/nativewind-theme.cjs').theme` (the module's `vuco` export holds
   the component tokens), and the `expo-font` plugin in `app.json` lists the five weights,
-  `./node_modules/@vuco/kit/tokens/fonts/PlusJakartaSans-<Weight>.ttf`.
+  `./node_modules/@vuco/kit/tokens/fonts/PlusJakartaSans-<Weight>.ttf`. Since kit 0.9.0 the six text
+  roles read a CSS variable whose fallback is their Plus Jakarta Sans face
+  (`var(--font-body, PlusJakartaSans-Regular)`), so an app that sets no variable renders as before;
+  the money roles stay Plus Jakarta Sans. An app with a Cyrillic App Language also embeds
+  `./node_modules/@vuco/kit/tokens/fonts/FixelText-<Weight>.ttf` and sets the variables on one View
+  above its screens from its first render: `vars(FONT_ROLE_VARS.cyrillic)` or
+  `vars(FONT_ROLE_VARS.latin)` from `@vuco/kit/src/fonts/fontRoleVars`, each kept as a module-level
+  constant. A figure that needs tabular digits in a text role pins Plus Jakarta Sans with an inline
+  `fontFamily`.
 - **NativeWind** — `tailwind.config.js` scans the kit's `src/ui/` as well, or every class that only
   kit source uses renders unstyled, with no error:
   `content: ['./src/**/*.{ts,tsx}', './node_modules/@vuco/kit/src/ui/**/*.{ts,tsx}']`.
@@ -74,8 +83,11 @@ in six places:
   with `languageCode` and `languageTag`) and `react-native-safe-area-context` (`useSafeAreaInsets`,
   and `SafeAreaProvider` rendering its children).
 - **i18n** — `createI18n({ resources: { en, de }, fallbackLng: 'en' })` runs once at start; the app
-  exports the instance it returns. The app's strings are the default `translation` namespace, the
+  exports the instance it returns. It starts in the first device locale's language when `resources`
+  has a bundle for it, else in English. The app's strings are the default `translation` namespace, the
   kit's are `kit`. Document text uses `getFixedT(documentLanguage)` on the same instance.
+  `deviceBestMatchLanguage(languages)` matches the first device locale against the app's own list;
+  with no argument it matches English and German only, as before kit 0.9.0.
 - **Configs** — `eslint.config.js` is
   `defineConfig([require('@vuco/kit/config/eslint.base.js'), /* app rules */])`, and
   `tsconfig.json` has `"extends": "@vuco/kit/config/tsconfig.base.json"` plus the app's own `paths`
@@ -236,7 +248,7 @@ node test/consumer/scratchApp.mjs
 ```
 
 `npm test` runs the node:test suites (token tooling, pack validator and lint, version helper, the
-documented consumer paths) and the Jest suites (primitives, i18n factory, copy-drift helper, `.vuco`
+documented consumer paths) and the Jest suites (primitives, i18n factory, font-role variables, copy-drift helper, `.vuco`
 validator), on the stack vuco's app tests use. `test/consumer/scratchApp.mjs` installs the packed kit
 into a scratch app with every peer, as an app installs a tag, and resolves every path the published docs
 name: the Node modules and the ESLint config load, TypeScript parses the base tsconfig, and every package
