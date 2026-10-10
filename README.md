@@ -150,7 +150,11 @@ role and state on every control.
   each tab can show a count badge.
 - `ExplainerCard` — content for an explainer: header icon, title, benefit rows, a primary button,
   and an optional secondary link and disclosure. The consumer supplies the container, such as a
-  `Sheet`. The secondary link's touch target is at least 48 dp (`min-h-[48px]`).
+  `Sheet`. The secondary link's touch target is at least 48 dp (`min-h-[48px]`). The button takes its
+  own states through `ctaDisabled`, `ctaPending` and `ctaPendingLabel`, which go to its `ButtonPrimary`
+  (disabled, or pending with progress text); without them it is enabled and idle. They do not change
+  the secondary link, which has its own `secondaryDisabled`: not pressable, disabled for screen
+  readers, and in the disabled ink.
 - `icons` — the single icon family: `ICON_NAMES` lists the MaterialCommunityIcons glyphs apps may
   use, and `IconName` is their union. Icons take token classes, so no colour value is copied out of
   the theme.

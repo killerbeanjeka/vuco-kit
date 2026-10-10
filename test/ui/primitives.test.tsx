@@ -237,6 +237,108 @@ describe('ExplainerCard (VAPP-74 reusable explainer)', () => {
     );
     expect(screen.queryByTestId('ex2-secondary')).toBeNull();
   });
+
+  // kit 0.10.0 (vuco:walk's paywall): the button's own states, passed to its ButtonPrimary.
+  const card = (props: { ctaDisabled?: boolean; ctaPending?: boolean; ctaPendingLabel?: string }, onCta: () => void) => (
+    <ExplainerCard testID="ex4" title="T" rows={[{ icon: 'percent-outline', text: 'R' }]} ctaLabel="Buy" onCta={onCta} {...props} />
+  );
+
+  it('without the button props, the button is enabled and idle, as before 0.10.0', async () => {
+    const onCta = jest.fn();
+    await render(card({}, onCta));
+    expect(screen.getByTestId('ex4-cta').props.accessibilityState).toMatchObject({ disabled: false, busy: false });
+    expect(screen.getByText('Buy')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('ex4-cta'));
+    expect(onCta).toHaveBeenCalledTimes(1);
+  });
+
+  it('ctaDisabled: the button blocks presses, says so to TalkBack and keeps its label', async () => {
+    const onCta = jest.fn();
+    await render(card({ ctaDisabled: true }, onCta));
+    const button = screen.getByTestId('ex4-cta');
+    expect(button.props.accessibilityState).toMatchObject({ disabled: true, busy: false });
+    expect(button.props.className).toContain('bg-surface-sunken dark:bg-surface-sunken-dark');
+    expect(screen.getByText('Buy')).toBeOnTheScreen();
+    await fireEvent.press(button);
+    expect(onCta).not.toHaveBeenCalled();
+  });
+
+  it('ctaPending with ctaPendingLabel: the button shows the progress text, is busy and blocks presses', async () => {
+    const onCta = jest.fn();
+    await render(card({ ctaPending: true, ctaPendingLabel: 'Buying…' }, onCta));
+    const button = screen.getByTestId('ex4-cta');
+    expect(button.props.accessibilityState).toMatchObject({ disabled: true, busy: true });
+    expect(screen.getByText('Buying…')).toBeOnTheScreen();
+    expect(screen.queryByText('Buy')).toBeNull();
+    await fireEvent.press(button);
+    expect(onCta).not.toHaveBeenCalled();
+  });
+
+  it('ctaPending without a label: the button falls back to its own progress text, never an idle look', async () => {
+    await render(card({ ctaPending: true }, jest.fn()));
+    expect(screen.getByText('Buy…')).toBeOnTheScreen();
+    expect(screen.getByTestId('ex4-cta').props.accessibilityState).toMatchObject({ busy: true });
+  });
+
+  it('the secondary link stays pressable while the button is disabled or pending', async () => {
+    const onSecondary = jest.fn();
+    await render(
+      <ExplainerCard
+        testID="ex5"
+        title="T"
+        rows={[{ icon: 'percent-outline', text: 'R' }]}
+        ctaLabel="Buy"
+        onCta={jest.fn()}
+        ctaDisabled
+        secondaryLabel="Restore"
+        onSecondary={onSecondary}
+      />,
+    );
+    await fireEvent.press(screen.getByTestId('ex5-secondary'));
+    expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
+
+  // kit 0.10.0 (vuco:walk's paywall: Restore, offline or while a purchase runs): the link's own disabled state.
+  const linked = (secondaryDisabled: boolean | undefined, onSecondary: () => void) => (
+    <ExplainerCard
+      testID="ex6"
+      title="T"
+      rows={[{ icon: 'percent-outline', text: 'R' }]}
+      ctaLabel="Buy"
+      onCta={jest.fn()}
+      secondaryLabel="Restore"
+      onSecondary={onSecondary}
+      secondaryDisabled={secondaryDisabled}
+    />
+  );
+
+  it('without secondaryDisabled, the link is pressable, says so to TalkBack and keeps the link ink', async () => {
+    const onSecondary = jest.fn();
+    await render(linked(undefined, onSecondary));
+    const link = screen.getByTestId('ex6-secondary');
+    expect(link.props.accessibilityRole).toBe('button');
+    expect(link.props.accessibilityState).toMatchObject({ disabled: false });
+    expect(screen.getByText('Restore').props.className).toContain('text-link dark:text-link-dark');
+    expect(screen.getByText('Restore').props.className).not.toContain('text-ink-disabled');
+    await fireEvent.press(link);
+    expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
+
+  it('secondaryDisabled: the link blocks presses, says so to TalkBack, takes the disabled ink and keeps its label and size', async () => {
+    const onSecondary = jest.fn();
+    await render(linked(true, onSecondary));
+    const link = screen.getByTestId('ex6-secondary');
+    expect(link.props.accessibilityRole).toBe('button');
+    expect(link.props.accessibilityState).toMatchObject({ disabled: true });
+    // State never shows by colour alone: the disabled state is in the accessibility state, the ink only follows it.
+    expect(screen.getByText('Restore').props.className).toContain('text-ink-disabled dark:text-ink-disabled-dark');
+    expect(screen.getByText('Restore').props.className).not.toContain('text-link');
+    expect(link.props.className).toContain('min-h-[48px]');
+    await fireEvent.press(link);
+    expect(onSecondary).not.toHaveBeenCalled();
+    // The button beside it is not affected.
+    expect(screen.getByTestId('ex6-cta').props.accessibilityState).toMatchObject({ disabled: false });
+  });
 });
 
 describe('the VAPP-76 chip system (3 roles)', () => {

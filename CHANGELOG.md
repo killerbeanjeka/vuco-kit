@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.0 — 2026-10-10
+
+The button and link states of `ExplainerCard`, for vuco:walk Story 6.2 (the paywall: Buy waits for the
+store's price and shows progress text while a purchase runs, and Restore is disabled offline). Nothing
+under `tokens` or `config` changed, and no other component did.
+
+Upgrading an app: nothing to do. The four props are optional, and a card without them renders the
+button and the link it rendered before; the link now also carries `accessibilityState` with
+`disabled: false`.
+
+- `ExplainerCard`: `ctaDisabled`, `ctaPending` and `ctaPendingLabel`, passed to its `ButtonPrimary` as
+  `disabled`, `pending` and `pendingLabel`. A disabled or pending button blocks presses and says so to
+  screen readers, as `ButtonPrimary` does; the secondary link is not affected by them.
+- `ExplainerCard`: `secondaryDisabled` for the secondary link. A disabled link blocks presses, says so
+  to screen readers (`accessibilityState`), and shows its label in `ink-disabled`; it keeps its 48 dp
+  touch target.
+- README: the four props in `ExplainerCard`'s contract.
+- Tests: the card with no button props, disabled, pending with and without a label, the secondary link
+  beside a disabled button, and the link with and without `secondaryDisabled`.
+
 ## 0.9.0 — 2026-10-08
 
 Five more languages and a Cyrillic text face, for vuco Story 16.1 (App Languages Ukrainian, Polish,

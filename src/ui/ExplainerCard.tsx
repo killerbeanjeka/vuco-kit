@@ -17,9 +17,15 @@ interface ExplainerCardProps {
   rows: ExplainerRow[];
   ctaLabel: string;
   onCta: () => void;
+  /** The primary button's own states (kit 0.10.0), passed to its `ButtonPrimary`: disabled, and pending with its progress text. */
+  ctaDisabled?: boolean;
+  ctaPending?: boolean;
+  ctaPendingLabel?: string;
   /** Optional secondary text link under the CTA (e.g. "What's §19?"). */
   secondaryLabel?: string;
   onSecondary?: () => void;
+  /** The secondary link's disabled state (kit 0.10.0): not pressable, said so to screen readers, in the disabled ink. */
+  secondaryDisabled?: boolean;
   /** Optional disclosure content rendered under the rows (e.g. the §19 paragraph). */
   children?: ReactNode;
   testID?: string;
@@ -28,14 +34,21 @@ interface ExplainerCardProps {
 // Reusable explainer (VAPP-74, N26 Spaces pattern): header icon + title + benefit rows + a
 // primary CTA + an optional secondary link. Content-only — the consumer owns the container
 // (a Sheet for the tax fork; the same anatomy is wanted later for the chase-ladder intro).
+// The button can be disabled or pending (kit 0.10.0, vuco:walk's paywall: Buy waits for the store's price, and
+// shows progress text while the purchase runs), and the secondary link can be disabled (Restore, offline); without
+// those props both are as they were.
 export function ExplainerCard({
   icon,
   title,
   rows,
   ctaLabel,
   onCta,
+  ctaDisabled,
+  ctaPending,
+  ctaPendingLabel,
   secondaryLabel,
   onSecondary,
+  secondaryDisabled = false,
   children,
   testID,
 }: ExplainerCardProps) {
@@ -66,15 +79,30 @@ export function ExplainerCard({
       {children}
 
       <View className="gap-2">
-        <ButtonPrimary testID={testID ? `${testID}-cta` : undefined} label={ctaLabel} onPress={onCta} />
+        <ButtonPrimary
+          testID={testID ? `${testID}-cta` : undefined}
+          label={ctaLabel}
+          onPress={onCta}
+          disabled={ctaDisabled}
+          pending={ctaPending}
+          pendingLabel={ctaPendingLabel}
+        />
         {secondaryLabel && onSecondary ? (
           <Pressable
             testID={testID ? `${testID}-secondary` : undefined}
             accessibilityRole="button"
+            accessibilityState={{ disabled: secondaryDisabled }}
+            disabled={secondaryDisabled}
             onPress={onSecondary}
             className="min-h-[48px] items-center justify-center"
           >
-            <Text className="font-body text-body text-link dark:text-link-dark">{secondaryLabel}</Text>
+            <Text
+              className={`font-body text-body ${
+                secondaryDisabled ? 'text-ink-disabled dark:text-ink-disabled-dark' : 'text-link dark:text-link-dark'
+              }`}
+            >
+              {secondaryLabel}
+            </Text>
           </Pressable>
         ) : null}
       </View>
