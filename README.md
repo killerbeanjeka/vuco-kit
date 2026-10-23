@@ -29,7 +29,7 @@ Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says w
 | `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage(supported?)`, with plural rules for every language below; `en.json`, `de.json`, `es.json`, `pl.json`, `ro.json`, `tr.json` and `uk.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels and Sheet's backdrop label). |
 | `src/packs/` | Pack tooling: `validatePacks.mjs` (schema and language-coverage validator), `countryLiteralLint.mjs` (the country-literal lint CLI), `packCopy.ts` (the drift check for a checked-in copy of pack data). No schema, no data. |
 | `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version. The policy: [src/versioning/README.md](src/versioning/README.md). |
-| `src/vuco-file/` | The `.vuco` hand-over bundle: manifest types, a validator and synthetic fixtures. The format: [src/vuco-file/README.md](src/vuco-file/README.md). |
+| `src/vuco-file/` | The `.vuco` hand-over bundle, format 1.1: manifest types, the limits, a validator, a synthetic 1.0 fixture and sample 1.1 snag lists. The format, and how to read a bundle safely: [src/vuco-file/README.md](src/vuco-file/README.md). |
 | `config/eslint.base.js` | The ESLint flat config apps extend: Expo's, with `dist/*` ignored. |
 | `config/tsconfig.base.json` | The TypeScript base apps extend: `expo/tsconfig.base`, `strict`, Jest types. |
 | `AGENTS.md` | Conventions every consumer app follows. |
@@ -233,10 +233,15 @@ MAJOR moves only by hand. Rules, EAS build numbers and the iOS limit:
 
 A ZIP file with `manifest.json` at the root and the photos (JPEG, PNG, HEIC or WebP) under `photos/`,
 so one app can hand a piece of work to another. Any family app (`vuco` or `vuco:<name>`) may write one;
-the importing app decides which producers and kinds it opens. `validateVucoBundle(manifest, entries)`
-checks a parsed manifest against the archive entries the app read, with entry names exactly as stored.
-The kit never opens, writes, hashes or sends a file. Layout, fields and
-versioning: [src/vuco-file/README.md](src/vuco-file/README.md).
+the importing app decides which producers and kinds it opens. Format 1.1 (kit 0.11.0) adds optional
+fields for a bundle id, a title, the notes' language and each note's location, trade, status,
+priority, due date and before-and-after photo pairs; writers write `VUCO_BUNDLE_FORMAT_VERSION`.
+`VUCO_BUNDLE_LIMITS` caps counts, sizes and text lengths on every 1.x bundle.
+`validateVucoBundle(manifest, entries)` checks a parsed manifest against every archive entry the app
+listed, with entry names exactly as stored. `createVucoSnagListSamples()` returns sample 1.1 snag
+lists as vuco:walk writes them, to build and test against. The kit never opens, writes, hashes or
+sends a file. Layout, fields, limits, versioning and how to read a bundle safely:
+[src/vuco-file/README.md](src/vuco-file/README.md).
 
 ## Develop
 

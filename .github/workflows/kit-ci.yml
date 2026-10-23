@@ -97,7 +97,7 @@ jobs:
             const contracts = [
               "src/packs/validatePacks.mjs", "src/packs/countryLiteralLint.mjs", "src/packs/packCopy.ts",
               "src/versioning/appVersion.mjs", "src/versioning/README.md",
-              "src/vuco-file/index.ts", "src/vuco-file/types.ts", "src/vuco-file/validate.ts", "src/vuco-file/fixtures.ts", "src/vuco-file/README.md",
+              "src/vuco-file/index.ts", "src/vuco-file/types.ts", "src/vuco-file/validate.ts", "src/vuco-file/fixtures.ts", "src/vuco-file/samples.ts", "src/vuco-file/README.md",
             ];
             const weights = ["Regular", "Medium", "SemiBold", "Bold", "ExtraBold"];
             const required = weights
@@ -124,7 +124,7 @@ jobs:
               /^src\/i18n\/(index\.ts|[a-z]{2}\.json)$/,
               /^src\/packs\/(validatePacks\.mjs|countryLiteralLint\.mjs|packCopy\.ts)$/,
               /^src\/versioning\/(appVersion\.mjs|README\.md)$/,
-              /^src\/vuco-file\/(index\.ts|types\.ts|validate\.ts|fixtures\.ts|README\.md)$/,
+              /^src\/vuco-file\/(index\.ts|types\.ts|validate\.ts|fixtures\.ts|samples\.ts|README\.md)$/,
               /^config\/(eslint\.base\.js|tsconfig\.base\.json)$/,
               /^tokens\//,
             ];

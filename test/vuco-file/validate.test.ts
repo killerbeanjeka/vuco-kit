@@ -85,9 +85,10 @@ describe('format versions', () => {
   it('accepts 1.7 with unknown fields and extra archive entries', () => {
     const { manifest, entries } = looseFixture();
     manifest.formatVersion = '1.7';
-    manifest.language = 'de';
+    // Names 1.1 does not know (1.1 checks its own fields, such as language and priority, wherever they appear).
+    manifest.weather = 'rain';
     manifest.producer.build = 42;
-    manifest.notes[0].priority = 'high';
+    manifest.notes[0].severity = 'major';
     manifest.attachments[0].takenAt = '2026-09-16T08:00:00Z';
     const archive: VucoBundleEntry[] = [
       { path: 'manifest.json', byteLength: 612, sha256: '0'.repeat(64) },

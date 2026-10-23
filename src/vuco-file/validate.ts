@@ -1,14 +1,20 @@
-// Validates a `.vuco` manifest against the archive entries the caller read (Story 15.3). The kit never
-// opens, writes, hashes or sends a bundle: the caller unzips it, parses manifest.json and passes each
-// entry's path, size and SHA-256. Unknown manifest fields and archive entries no attachment names are
-// ignored, so a 1.x bundle from a newer writer still validates.
+// Validates a `.vuco` manifest against the archive entries the caller read (Story 15.3; the 1.1 fields and
+// the limits since kit 0.11.0). The kit never opens, writes, hashes or sends a bundle: the caller unzips
+// it, parses manifest.json and passes each entry's path, size and SHA-256. Unknown manifest fields and
+// archive entries no attachment names are ignored, so a 1.x bundle from a newer writer still validates.
+// A 1.1 field is checked wherever it appears, whatever the minor version, and the limits hold for every
+// 1.x bundle.
 
 import {
   SUPPORTED_FORMAT_MAJOR,
   VUCO_BUNDLE_FORMAT,
+  VUCO_BUNDLE_LIMITS,
+  VUCO_BUNDLE_MANIFEST_PATH,
   VUCO_BUNDLE_PHOTO_TYPES,
   VUCO_BUNDLE_PHOTOS_DIR,
+  VUCO_BUNDLE_PRIORITIES,
   VUCO_BUNDLE_PRODUCER_APP,
+  VUCO_BUNDLE_STATUSES,
   type VucoBundleEntry,
   type VucoBundleManifest,
   type VucoBundlePhotoType,
@@ -21,11 +27,18 @@ const FORMAT_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const VERSION_NAME = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.([1-9]\d*)$/;
 const KIND = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/;
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+// RFC 9562: 8-4-4-4-12 lowercase hex digits, with a version from 1 to 8 and the variant bits 10.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const LANGUAGE = /^[a-z]{2}(?:-[A-Z]{2})?$/;
 // A file directly under photos/, with a portable name that is not hidden and cannot climb out.
 const FILE_NAME = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
 const MAX_FILE_NAME = 255;
 const SHA256 = /^[0-9a-f]{64}$/;
 const PHOTO_TYPES = Object.keys(VUCO_BUNDLE_PHOTO_TYPES) as VucoBundlePhotoType[];
+const LIMITS = VUCO_BUNDLE_LIMITS;
+
+type Entry = Record<string, unknown>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -48,23 +61,45 @@ function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
-/** A date-time that exists: checked field by field, because engines roll impossible dates over. */
+/** A day that exists: checked field by field, because engines roll impossible dates over. */
+function isDay(year: number, month: number, day: number): boolean {
+  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1];
+}
+
+/** A date-time that exists, with seconds and a time zone. */
 function isDateTime(value: unknown): boolean {
   const match = typeof value === 'string' ? DATE_TIME.exec(value) : null;
   if (!match) return false;
   const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number);
-  const daysInMonth = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const offsetOk = match[7] === undefined || (Number(match[7]) <= 14 && Number(match[8]) <= 59);
-  return (
-    month >= 1 &&
-    month <= 12 &&
-    day >= 1 &&
-    day <= daysInMonth[month - 1] &&
-    hour <= 23 &&
-    minute <= 59 &&
-    second <= 59 &&
-    offsetOk
-  );
+  return isDay(year, month, day) && hour <= 23 && minute <= 59 && second <= 59 && offsetOk;
+}
+
+/** A `YYYY-MM-DD` day that exists. */
+function isDate(value: unknown): boolean {
+  const match = typeof value === 'string' ? DATE.exec(value) : null;
+  return match !== null && isDay(Number(match[1]), Number(match[2]), Number(match[3]));
+}
+
+/** `text`'s length in code points when that is over `limit`, else null. A code point takes one or two UTF-16 units. */
+function charsOver(text: string, limit: number): number | null {
+  if (text.length <= limit) return null;
+  const chars = [...text].length;
+  return chars > limit ? chars : null;
+}
+
+/** Why `value` is not a usable name (the title, a trade, a location name), or null when it is. */
+function nameProblem(value: unknown): string | null {
+  if (typeof value !== 'string' || value.trim() === '') return `must be a non-blank string, not ${JSON.stringify(value)}`;
+  const chars = charsOver(value, LIMITS.nameChars);
+  return chars === null ? null : `is ${chars} characters long, over the limit of ${LIMITS.nameChars}`;
+}
+
+/** `"a", "b" or "c"`. */
+function oneOf(values: readonly string[]): string {
+  const quoted = values.map((value) => JSON.stringify(value));
+  return `${quoted.slice(0, -1).join(', ')} or ${quoted[quoted.length - 1]}`;
 }
 
 /** Why `path` is not a usable attachment path, or null when it is. */
@@ -98,7 +133,7 @@ function formatErrors(manifest: Record<string, unknown>): string[] {
 
 function headerErrors(manifest: Record<string, unknown>): string[] {
   const errors: string[] = [];
-  const { producer, kind, createdAt } = manifest;
+  const { producer, kind, createdAt, bundleId, title, language } = manifest;
   if (!isRecord(producer)) {
     errors.push('producer: must be an object with app and version');
   } else {
@@ -119,11 +154,53 @@ function headerErrors(manifest: Record<string, unknown>): string[] {
   if (!isDateTime(createdAt)) {
     errors.push(`createdAt: must be an ISO 8601 date-time with seconds and a time zone, not ${JSON.stringify(createdAt)}`);
   }
+  if (bundleId !== undefined && (typeof bundleId !== 'string' || !UUID.test(bundleId))) {
+    errors.push(`bundleId: must be a lowercase RFC 9562 UUID (version 1 to 8, variant 10), not ${JSON.stringify(bundleId)}`);
+  }
+  const titleProblem = title === undefined ? null : nameProblem(title);
+  if (titleProblem !== null) errors.push(`title: ${titleProblem}`);
+  if (language !== undefined && (typeof language !== 'string' || !LANGUAGE.test(language))) {
+    errors.push(`language: must be a language code, "xx" or "xx-YY" such as "de" or "de-AT", not ${JSON.stringify(language)}`);
+  }
   return errors;
 }
 
-/** Attachment shapes, uniqueness, and the match with the archive entries. Returns the known ids. */
-function attachmentErrors(attachments: unknown, entries: readonly unknown[], errors: string[]): Set<string> {
+/** The archive entries by path, built once. An entry that is not an object or has no string path is left out. */
+function indexEntries(entries: readonly unknown[]): Map<string, Entry[]> {
+  const index = new Map<string, Entry[]>();
+  for (const entry of entries) {
+    if (!isRecord(entry) || typeof entry.path !== 'string') continue;
+    const listed = index.get(entry.path);
+    if (listed) listed.push(entry);
+    else index.set(entry.path, [entry]);
+  }
+  return index;
+}
+
+/** The count limits, and the size of `manifest.json` when the entries list it. */
+function countErrors(manifest: Record<string, unknown>, entries: readonly unknown[], byPath: Map<string, Entry[]>, errors: string[]): void {
+  const { notes, attachments } = manifest;
+  if (Array.isArray(notes) && notes.length > LIMITS.notes) {
+    errors.push(`notes: ${notes.length} notes, over the limit of ${LIMITS.notes}`);
+  }
+  if (Array.isArray(attachments) && attachments.length > LIMITS.attachments) {
+    errors.push(`attachments: ${attachments.length} attachments, over the limit of ${LIMITS.attachments}`);
+  }
+  if (entries.length > LIMITS.entries) {
+    errors.push(`entries: ${entries.length} archive entries, over the limit of ${LIMITS.entries}`);
+  }
+  for (const entry of byPath.get(VUCO_BUNDLE_MANIFEST_PATH) ?? []) {
+    const size = entry.byteLength;
+    if (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0) {
+      errors.push(`${VUCO_BUNDLE_MANIFEST_PATH}: byteLength in the archive must be a whole number of bytes, not ${JSON.stringify(size)}`);
+    } else if (size > LIMITS.manifestBytes) {
+      errors.push(`${VUCO_BUNDLE_MANIFEST_PATH}: ${size} bytes in the archive, over the limit of ${LIMITS.manifestBytes}`);
+    }
+  }
+}
+
+/** Attachment shapes, uniqueness, the limits, and the match with the archive entries. Returns the known ids. */
+function attachmentErrors(attachments: unknown, byPath: Map<string, Entry[]>, errors: string[]): Set<string> {
   const ids = new Set<string>();
   if (!Array.isArray(attachments)) {
     errors.push('attachments: must be an array');
@@ -132,6 +209,7 @@ function attachmentErrors(attachments: unknown, entries: readonly unknown[], err
   // Lower-cased path → the path as written: two paths that differ only by letter case would overwrite
   // each other when the bundle is unpacked on a case-insensitive file system.
   const paths = new Map<string, string>();
+  let totalBytes = 0;
   attachments.forEach((attachment: unknown, index) => {
     if (!isRecord(attachment)) {
       errors.push(`attachments[${index}]: must be an object`);
@@ -163,12 +241,18 @@ function attachmentErrors(attachments: unknown, entries: readonly unknown[], err
     }
     const sizeOk = typeof byteLength === 'number' && Number.isSafeInteger(byteLength) && byteLength > 0;
     if (!sizeOk) errors.push(`${name}: byteLength must be a positive integer, not ${JSON.stringify(byteLength)}`);
+    else {
+      totalBytes += byteLength;
+      if (byteLength > LIMITS.attachmentBytes) {
+        errors.push(`${name}: byteLength is ${byteLength}, over the limit of ${LIMITS.attachmentBytes}`);
+      }
+    }
     const hashOk = typeof sha256 === 'string' && SHA256.test(sha256);
     if (!hashOk) errors.push(`${name}: sha256 must be 64 lowercase hex digits`);
     if (!pathOk) return;
 
     // Entry names are compared exactly as the archive stores them (see README.md, "Validating").
-    const inArchive = entries.filter((entry) => isRecord(entry) && entry.path === path);
+    const inArchive = byPath.get(path) ?? [];
     if (inArchive.length === 0) {
       errors.push(`${name}: ${path} is missing from the archive`);
       return;
@@ -177,7 +261,7 @@ function attachmentErrors(attachments: unknown, entries: readonly unknown[], err
       errors.push(`${name}: ${path} appears ${inArchive.length} times in the archive`);
       return;
     }
-    const entry = inArchive[0] as Record<string, unknown>;
+    const entry = inArchive[0];
     if (sizeOk && entry.byteLength !== byteLength) {
       errors.push(`${name}: byteLength is ${byteLength} in the manifest but ${JSON.stringify(entry.byteLength)} in the archive`);
     }
@@ -185,7 +269,86 @@ function attachmentErrors(attachments: unknown, entries: readonly unknown[], err
       errors.push(`${name}: sha256 in the manifest does not match ${path} in the archive`);
     }
   });
+  if (totalBytes > LIMITS.totalAttachmentBytes) {
+    errors.push(`attachments: ${totalBytes} bytes in all, over the limit of ${LIMITS.totalAttachmentBytes}`);
+  }
   return ids;
+}
+
+/** A note's `attachmentIds`, checked against the bundle's attachments. */
+function noteAttachmentErrors(name: string, attachmentIds: unknown, known: ReadonlySet<string>, errors: string[]): void {
+  if (attachmentIds === undefined) return;
+  if (!Array.isArray(attachmentIds)) {
+    errors.push(`${name}: attachmentIds must be an array of attachment ids`);
+    return;
+  }
+  const listed = new Set<string>();
+  for (const attachmentId of attachmentIds as unknown[]) {
+    if (typeof attachmentId !== 'string' || !known.has(attachmentId)) {
+      errors.push(`${name}: attachmentIds names unknown attachment ${JSON.stringify(attachmentId)}`);
+    } else if (listed.has(attachmentId)) {
+      errors.push(`${name}: attachmentIds lists "${attachmentId}" more than once`);
+    } else {
+      listed.add(attachmentId);
+    }
+  }
+}
+
+/** A note's `photoPairs` (1.1): each id one of the note's own `attachmentIds`, and none used twice. */
+function photoPairErrors(name: string, photoPairs: unknown, own: ReadonlySet<string>, errors: string[]): void {
+  if (!Array.isArray(photoPairs)) {
+    errors.push(`${name}: photoPairs must be an array of photo pairs`);
+    return;
+  }
+  const used = new Set<string>();
+  photoPairs.forEach((pair: unknown, index) => {
+    const at = `photoPairs[${index}]`;
+    if (!isRecord(pair) || (pair.before === undefined && pair.after === undefined)) {
+      errors.push(`${name}: ${at} must be an object with a before photo, an after photo or both`);
+      return;
+    }
+    for (const side of ['before', 'after'] as const) {
+      const photoId = pair[side];
+      if (photoId === undefined) continue;
+      if (typeof photoId !== 'string') errors.push(`${name}: ${at}.${side} must be an attachment id, not ${JSON.stringify(photoId)}`);
+      else if (!own.has(photoId)) errors.push(`${name}: ${at}.${side} "${photoId}" is not one of the note's attachmentIds`);
+      else if (used.has(photoId)) errors.push(`${name}: ${at}.${side} "${photoId}" appears earlier in photoPairs`);
+      else used.add(photoId);
+    }
+  });
+}
+
+/** A note's 1.1 fields, each checked only when present. */
+function snagFieldErrors(name: string, note: Record<string, unknown>, errors: string[]): void {
+  const { location, trade, status, priority, dueDate, photoPairs } = note;
+  if (location !== undefined) {
+    if (!Array.isArray(location) || location.length === 0) {
+      errors.push(`${name}: location must be an array of at least one location name, not ${JSON.stringify(location)}`);
+    } else {
+      if (location.length > LIMITS.locationLevels) {
+        errors.push(`${name}: location has ${location.length} levels, over the limit of ${LIMITS.locationLevels}`);
+      }
+      location.forEach((level: unknown, index) => {
+        const problem = nameProblem(level);
+        if (problem !== null) errors.push(`${name}: location[${index}] ${problem}`);
+      });
+    }
+  }
+  const tradeProblem = trade === undefined ? null : nameProblem(trade);
+  if (tradeProblem !== null) errors.push(`${name}: trade ${tradeProblem}`);
+  if (status !== undefined && !(VUCO_BUNDLE_STATUSES as readonly unknown[]).includes(status)) {
+    errors.push(`${name}: status must be ${oneOf(VUCO_BUNDLE_STATUSES)}, not ${JSON.stringify(status)}`);
+  }
+  if (priority !== undefined && !(VUCO_BUNDLE_PRIORITIES as readonly unknown[]).includes(priority)) {
+    errors.push(`${name}: priority must be ${oneOf(VUCO_BUNDLE_PRIORITIES)}, not ${JSON.stringify(priority)}`);
+  }
+  if (dueDate !== undefined && !isDate(dueDate)) {
+    errors.push(`${name}: dueDate must be a day that exists, as YYYY-MM-DD, not ${JSON.stringify(dueDate)}`);
+  }
+  if (photoPairs !== undefined) {
+    const own = new Set(Array.isArray(note.attachmentIds) ? note.attachmentIds.filter((id): id is string => typeof id === 'string') : []);
+    photoPairErrors(name, photoPairs, own, errors);
+  }
 }
 
 function noteErrors(notes: unknown, attachmentIds: ReadonlySet<string>, errors: string[]): void {
@@ -204,29 +367,21 @@ function noteErrors(notes: unknown, attachmentIds: ReadonlySet<string>, errors: 
     if (!isNonEmptyString(id)) errors.push(`${name}: id must be a non-empty string`);
     else if (ids.has(id)) errors.push(`${name}: duplicate id`);
     else ids.add(id);
-    if (typeof text !== 'string') errors.push(`${name}: text must be a string`);
-    if (note.attachmentIds === undefined) return;
-    if (!Array.isArray(note.attachmentIds)) {
-      errors.push(`${name}: attachmentIds must be an array of attachment ids`);
-      return;
+    if (typeof text !== 'string') {
+      errors.push(`${name}: text must be a string`);
+    } else {
+      const chars = charsOver(text, LIMITS.noteTextChars);
+      if (chars !== null) errors.push(`${name}: text is ${chars} characters long, over the limit of ${LIMITS.noteTextChars}`);
     }
-    const listed = new Set<string>();
-    for (const attachmentId of note.attachmentIds as unknown[]) {
-      if (typeof attachmentId !== 'string' || !attachmentIds.has(attachmentId)) {
-        errors.push(`${name}: attachmentIds names unknown attachment ${JSON.stringify(attachmentId)}`);
-      } else if (listed.has(attachmentId)) {
-        errors.push(`${name}: attachmentIds lists "${attachmentId}" more than once`);
-      } else {
-        listed.add(attachmentId);
-      }
-    }
+    noteAttachmentErrors(name, note.attachmentIds, attachmentIds, errors);
+    snagFieldErrors(name, note, errors);
   });
 }
 
 /**
- * Checks a parsed `manifest.json` against the entries of the archive it came from. A bundle of an
- * unknown format or major version is rejected without reading further; otherwise every problem found
- * is listed.
+ * Checks a parsed `manifest.json` against the entries of the archive it came from: every entry,
+ * `manifest.json` included. A bundle of an unknown format or major version is rejected without reading
+ * further; otherwise every problem found is listed, one line each.
  */
 export function validateVucoBundle(manifest: unknown, entries: readonly VucoBundleEntry[]): VucoBundleValidation {
   if (!isRecord(manifest)) return { ok: false, errors: ['manifest: must be a JSON object'] };
@@ -236,7 +391,9 @@ export function validateVucoBundle(manifest: unknown, entries: readonly VucoBund
   const errors = headerErrors(manifest);
   const archive: readonly unknown[] = Array.isArray(entries) ? entries : [];
   if (!Array.isArray(entries)) errors.push('entries: must be an array of archive entries');
-  const attachmentIds = attachmentErrors(manifest.attachments, archive, errors);
+  const byPath = indexEntries(archive);
+  countErrors(manifest, archive, byPath, errors);
+  const attachmentIds = attachmentErrors(manifest.attachments, byPath, errors);
   noteErrors(manifest.notes, attachmentIds, errors);
   return errors.length > 0 ? { ok: false, errors } : { ok: true, manifest: manifest as unknown as VucoBundleManifest };
 }

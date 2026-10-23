@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.11.0 — 2026-10-23
+
+Kit release B (vuco:walk Story 8.1): `.vuco` format 1.1, for the bundles vuco:walk will send with a
+report and the importer vuco will build. Of the shipped code only `src/vuco-file` changed: nothing
+under `tokens` or `config`, and no component.
+
+Upgrading an app: nothing to do for an app that neither reads nor writes bundles. An app that reads
+them passes every archive entry, `manifest.json` included, and now has a bundle over a limit rejected,
+whatever its minor version; it follows "Reading a bundle safely" in `src/vuco-file/README.md`. An app
+that writes them writes `formatVersion` `VUCO_BUNDLE_FORMAT_VERSION` (`"1.1"`), stores the photos
+uncompressed and keeps within `VUCO_BUNDLE_LIMITS`. Every 1.0 field and rule stays, readers still
+ignore fields and entries they do not know, and `createVucoBundleFixture()` returns the same 1.0
+bundle.
+
+- Format 1.1: the optional manifest fields `bundleId` (a lowercase RFC 9562 UUID, kept when a
+  hand-over is sent again), `title` and `language` (`xx` or `xx-YY`), and the optional note fields
+  `location` (names from the outermost level, at least one), `trade`, `status` (`open` or `closed`,
+  `VUCO_BUNDLE_STATUSES`), `priority` (`high`, `medium` or `low`, `VUCO_BUNDLE_PRIORITIES`), `dueDate`
+  (`YYYY-MM-DD`, a day that exists) and `photoPairs` (`[{ before?, after? }]`, oldest first, ids from
+  the note's own `attachmentIds`, none used twice). The title, a trade and a location name are never
+  blank. Types: `VucoBundlePhotoPair`, `VucoBundleStatus`, `VucoBundlePriority`, and the new optional
+  fields on `VucoBundleManifest` and `VucoBundleNote`.
+- `VUCO_BUNDLE_FORMAT_VERSION`: `"1.1"`, the version a writer writes.
+- `VUCO_BUNDLE_LIMITS`, inclusive, on every 1.x bundle: 10,000 notes, 20,000 attachments, 25,000
+  archive entries, 32 MiB for one attachment, 2,000,000,000 bytes for all of them, 16 MiB for
+  `manifest.json` (when the entries list it), 20,000 characters of note text, 500 characters for the
+  title, a trade or a location name, and 10 location levels. Characters are code points.
+- `validateVucoBundle` checks each 1.1 field wherever it appears, in any 1.x minor version, and every
+  limit, one line per problem naming the note, attachment or manifest field (a limit's line names the
+  limit and the value). It indexes the entries by path once, so a bundle at the count limits validates
+  in milliseconds; it scanned every entry for each attachment before.
+- `createVucoSnagListSamples()` (`src/vuco-file/samples.ts`): two fresh 1.1 snag lists as vuco:walk
+  writes them, with their JPEG photo bytes and entries: `firstWalk` in English and `reinspected` in
+  German, after a finished re-inspection round. The data is synthetic.
+- `src/vuco-file/README.md`: the 1.1 rows of the manifest table, "Limits", "Reading a bundle safely"
+  (what a reader checks before, while and after extracting), "Samples", the 1.1 note in "Versions", and
+  every entry, the manifest's included, in "Validating". `README.md`: the `.vuco` rows.
+- The pack guard in `kit-ci.yml` requires `src/vuco-file/samples.ts`.
+- Tests: the I/O matrix of the 1.1 fields (a 1.0 bundle, a newer minor, each bad field), every limit at
+  its value and one over, the samples valid and fresh with real SHA-256 digests and JPEG markers, and a
+  bundle at all the count limits at once. The 1.7 test now uses field names 1.1 does not know.
+
 ## 0.10.0 — 2026-10-10
 
 The button and link states of `ExplainerCard`, for vuco:walk Story 6.2 (the paywall: Buy waits for the
