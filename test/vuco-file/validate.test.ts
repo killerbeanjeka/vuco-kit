@@ -398,7 +398,8 @@ describe('paths and attachment lists (K9, K10)', () => {
     const long = `photos/${'a'.repeat(252)}.png`;
     const longest = `photos/${'a'.repeat(251)}.png`;
     const cases: [string, string[]][] = [
-      [long, [`attachment "photo-1": path "${long}" has a file name longer than 255 characters`]],
+      // The path is echoed in 80 characters, its cut marked with "…".
+      [long, [`attachment "photo-1": path "photos/${'a'.repeat(71)}… has a file name longer than 255 characters`]],
       ['photos/snag-1.png.', ['attachment "photo-1": path "photos/snag-1.png." has a file name that ends in a dot']],
       [longest, []],
     ];

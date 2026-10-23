@@ -3,10 +3,13 @@
 //
 // As vuco:walk writes them:
 // - note and attachment ids are UUIDv7s (RFC 9562), and each photo is a JPEG at photos/<attachment id>.jpg;
-// - a note's text is the item's "<number>. <title>", its location path joined by " › ", then its
-//   description, one line each, a line left out when empty.
+// - every note carries location and status, and photoPairs when it has photos. firstWalk's last two notes
+//   are minimal notes, which vuco:walk does not write and a reader must also accept;
+// - a note's text is for display: the item's "<number>. <title>" ("<number>." for an item without a title),
+//   its location path joined by " › ", then its description with its own line breaks, each on its own line,
+//   a line left out when empty. Readers take the structured fields.
 //
-// The photos are 160-byte 1×1 grey baseline JPEGs that differ only in their two scan bytes. Their digests
+// The photos are 160-byte 1×1 grey baseline JPEGs that differ only in their first scan byte. Their digests
 // are written out, not computed, because the kit never hashes; test/vuco-file/samples.test.ts proves they
 // are the real SHA-256 of these bytes.
 
@@ -15,8 +18,8 @@ import { VUCO_BUNDLE_FORMAT_VERSION, type VucoBundleEntry, type VucoBundleManife
 
 export interface VucoSnagListSamples {
   /**
-   * A first walk, in English: open items, each 1.1 note field at least once, and items with none of
-   * them (text and photos only).
+   * A first walk, in English: open items, each 1.1 note field at least once, and two minimal notes with
+   * none of them (text and photos only), which vuco:walk does not write and a reader must also accept.
    */
   firstWalk: VucoBundleFixture;
   /**
@@ -41,8 +44,8 @@ const JPEG_HEAD = [
 const JPEG_END = [0xff, 0xd9];
 
 /**
- * The photo of grey level `grey` (at most 64, or at least 192: DC category 7). Its scan holds the DC code
- * and 7 value bits, then the end-of-block code and padding.
+ * The photo of grey level `grey`, 1 to 64 or 192 to 255 (DC category 7; grey 0 would need a stuffed 0xFF).
+ * Its scan holds the DC code and 7 value bits, then the end-of-block code and padding.
  */
 function jpeg(grey: number): number[] {
   const value = grey < 128 ? grey - 1 : grey - 128;
@@ -103,9 +106,9 @@ function firstWalk(): VucoBundleFixture {
       notes: [
         {
           id: '01a15d7b-b6a7-7b2c-92f0-ab9c25490e4f',
-          text: '1. Cracked tile next to the shower tray\nFlat 3 › Bathroom › Shower\nHairline crack across the second tile from the left.',
+          text: '1. Cracked tile next to the shower tray\nFlat 3 › Bathroom › Shower › Back wall\nHairline crack across the second tile from the left.',
           attachmentIds: [tile.id],
-          location: ['Flat 3', 'Bathroom', 'Shower'],
+          location: ['Flat 3', 'Bathroom', 'Shower', 'Back wall'],
           trade: 'Tiling',
           status: 'open',
           priority: 'high',
@@ -124,15 +127,17 @@ function firstWalk(): VucoBundleFixture {
           photoPairs: [{ before: sillLeft.id }, { before: sillRight.id }],
         },
         {
-          // No trade and no photos.
+          // No trade and no photos; a description over two lines.
           id: '01a15d85-479c-7b7d-a04d-ab8aedebecab',
-          text: '3. Door stop is loose\nFlat 3 › Hallway\nThe screw turns in its plug.',
+          text: '3. Door stop is loose\nFlat 3 › Hallway\nThe screw turns in its plug.\nThe door swings into the radiator.',
           location: ['Flat 3', 'Hallway'],
           status: 'open',
           priority: 'low',
           dueDate: '2026-11-20',
         },
-        // Two items with none of the 1.1 note fields: text and photos only.
+        // Two minimal notes, which vuco:walk does not write and a reader must also accept: none of the 1.1 note
+        // fields, and note 4's photo without photoPairs. vuco:walk writes location and status on every note, and
+        // photoPairs on every note with photos.
         {
           id: '01a15d88-66a5-7320-864b-f24327ad2572',
           text: '4. Paint splashes on the skirting board\nFlat 3 › Living room\nAlong the wall by the door.',

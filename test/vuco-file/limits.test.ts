@@ -121,11 +121,25 @@ describe('each limit at its value and one over', () => {
     expect(errorsOf(validateVucoBundle(manifest, withManifest(16 * MIB + 1)))).toEqual([
       'manifest.json: 16777217 bytes in the archive, over the limit of 16777216',
     ]);
-    expect(errorsOf(validateVucoBundle(manifest, withManifest('16 MiB')))).toEqual([
-      'manifest.json: byteLength in the archive must be a whole number of bytes, not "16 MiB"',
-    ]);
+    for (const byteLength of ['16 MiB', -1, 1.5]) {
+      expect(errorsOf(validateVucoBundle(manifest, withManifest(byteLength)))).toEqual([
+        `manifest.json: byteLength in the archive must be a whole number of bytes, not ${JSON.stringify(byteLength)}`,
+      ]);
+    }
     // Not listed: nothing to check.
     expect(validateVucoBundle(manifest, entries).ok).toBe(true);
+  });
+
+  it('manifest.json listed twice, within its limit or not', () => {
+    const { manifest, entries } = looseSample();
+    const listing = (byteLength: number) => ({ path: 'manifest.json', byteLength, sha256: '' });
+    expect(errorsOf(validateVucoBundle(manifest, [listing(4096), listing(4096), ...entries]))).toEqual([
+      'manifest.json appears 2 times in the archive',
+    ]);
+    expect(errorsOf(validateVucoBundle(manifest, [listing(4096), listing(16 * MIB + 1), ...entries]))).toEqual([
+      'manifest.json appears 2 times in the archive',
+      'manifest.json: 16777217 bytes in the archive, over the limit of 16777216',
+    ]);
   });
 
   it('note text, in code points, and an empty text', () => {
@@ -199,5 +213,50 @@ describe('a bundle at every count limit at once', () => {
     expect(validateVucoBundle(manifest, archive).ok).toBe(true);
     // About 40 ms here; scanning the entries once per attachment instead took 2.5 s.
     expect(Date.now() - started).toBeLessThan(1_000);
+  });
+});
+
+describe('a bounded problem list', () => {
+  it('stops at the header and count lines once a count is over its limit', () => {
+    // 5,000,000 empty notes: one count line, not a line for each note.
+    const notes = bundleOf(1, [1]);
+    (notes.manifest as Record<string, unknown>).kind = 'Snag List';
+    (notes.manifest as Record<string, unknown>).notes = new Array(5_000_000).fill({});
+    expect(errorsOf(validateVucoBundle(notes.manifest, notes.entries))).toEqual([
+      'kind: must be a lowercase kebab-case name such as "snag-list", not "Snag List"',
+      'notes: 5000000 notes, over the limit of 10000',
+    ]);
+    const attachments = bundleOf(1, [1]);
+    (attachments.manifest as Record<string, unknown>).attachments = new Array(20_001).fill({});
+    expect(errorsOf(validateVucoBundle(attachments.manifest, attachments.entries))).toEqual([
+      'attachments: 20001 attachments, over the limit of 20000',
+    ]);
+    // Over the entry limit, an attachment missing from the archive is not looked for.
+    const entries = bundleOf(1, [1]);
+    expect(errorsOf(validateVucoBundle(entries.manifest, extraEntries(25_001)))).toEqual([
+      'entries: 25001 archive entries, over the limit of 25000',
+    ]);
+  });
+
+  it('reports only the level count past the location limit', () => {
+    const { manifest, entries } = looseSample();
+    manifest.notes[2].location = new Array(1_000_000).fill(' ');
+    expect(errorsOf(validateVucoBundle(manifest, entries))).toEqual([
+      'note "01a15d85-479c-7b7d-a04d-ab8aedebecab": location has 1000000 levels, over the limit of 10',
+    ]);
+  });
+
+  it('keeps 100 lines, then one line counting the rest', () => {
+    const notTexts = (count: number) => {
+      const { manifest, entries } = bundleOf(count, [1]);
+      manifest.notes.forEach((note) => Object.assign(note, { text: 7 }));
+      return errorsOf(validateVucoBundle(manifest, entries));
+    };
+    const line = (index: number) => `note "note-${index}": text must be a string`;
+    expect(notTexts(100)).toEqual(Array.from({ length: 100 }, (_, index) => line(index)));
+    expect(notTexts(101)).toEqual([...Array.from({ length: 100 }, (_, index) => line(index)), '… and 1 more problem']);
+    const many = notTexts(10_000);
+    expect(many).toHaveLength(101);
+    expect(many[100]).toBe('… and 9900 more problems');
   });
 });

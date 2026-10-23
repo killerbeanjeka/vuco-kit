@@ -14,9 +14,11 @@ export const VUCO_BUNDLE_FORMAT_VERSION = '1.1';
 
 /**
  * The limits of every 1.x bundle, each inclusive: a bundle at a limit is valid, one over it is not.
- * Characters are Unicode code points, so a letter outside the Basic Multilingual Plane counts once.
+ * Characters are Unicode code points: a code point outside the Basic Multilingual Plane counts once, and
+ * an emoji made of several code points (a flag, a skin tone, a joined sequence) counts each of them.
+ * Frozen, like the value lists below: the validator reads them, so nothing may change them at run time.
  */
-export const VUCO_BUNDLE_LIMITS = {
+export const VUCO_BUNDLE_LIMITS = Object.freeze({
   /** Notes in `notes`. */
   notes: 10_000,
   /** Attachments in `attachments`. */
@@ -35,15 +37,15 @@ export const VUCO_BUNDLE_LIMITS = {
   nameChars: 500,
   /** Names in a note's `location`. */
   locationLevels: 10,
-} as const;
+} as const);
 
 /** A note's `status` (1.1). */
-export const VUCO_BUNDLE_STATUSES = ['open', 'closed'] as const;
+export const VUCO_BUNDLE_STATUSES = Object.freeze(['open', 'closed'] as const);
 
 export type VucoBundleStatus = (typeof VUCO_BUNDLE_STATUSES)[number];
 
 /** A note's `priority` (1.1). */
-export const VUCO_BUNDLE_PRIORITIES = ['high', 'medium', 'low'] as const;
+export const VUCO_BUNDLE_PRIORITIES = Object.freeze(['high', 'medium', 'low'] as const);
 
 export type VucoBundlePriority = (typeof VUCO_BUNDLE_PRIORITIES)[number];
 
@@ -104,8 +106,9 @@ export interface VucoBundleNote {
   /** 1.1: the day the work is due, `YYYY-MM-DD`. */
   dueDate?: string;
   /**
-   * 1.1: the before and after photos side by side, oldest first. Each id is one of the note's
-   * `attachmentIds`, and no id appears twice across the pairs.
+   * 1.1: the before and after photos side by side, oldest first: at least one pair, every one of the
+   * note's `attachmentIds` in exactly one pair, and each column filled from the first row. A note without
+   * it does not say which of its photos are before and which after.
    */
   photoPairs?: VucoBundlePhotoPair[];
 }
@@ -131,8 +134,8 @@ export interface VucoBundleManifest {
   /** When the bundle was written: a real ISO 8601 date-time with seconds and a time zone. */
   createdAt: string;
   /**
-   * 1.1: the hand-over's id, a lowercase RFC 9562 UUID. A hand-over sent again keeps its id, so a
-   * reader can tell a repeat.
+   * 1.1: the hand-over's id, a lowercase RFC 9562 UUID. A hand-over sent again carries the same content
+   * and keeps its id, so a reader can tell a repeat; changed content is a new hand-over with a new id.
    */
   bundleId?: string;
   /** 1.1: the name of the piece of work. */

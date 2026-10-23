@@ -62,7 +62,8 @@ describe('the snag-list samples', () => {
       expect(VUCO_BUNDLE_FORMAT_VERSION).toBe('1.1');
       expect(validateVucoBundle(manifest, entries)).toEqual({ ok: true, manifest });
       // With manifest.json's entry too, as a reader passes it.
-      const archive = [{ path: 'manifest.json', byteLength: JSON.stringify(manifest).length, sha256: '0'.repeat(64) }, ...entries];
+      const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest)).length;
+      const archive = [{ path: 'manifest.json', byteLength: manifestBytes, sha256: '' }, ...entries];
       expect(validateVucoBundle(manifest, archive).ok).toBe(true);
       return name;
     });
@@ -120,19 +121,24 @@ describe('the snag-list samples', () => {
     }
   });
 
-  it('write each note text as vuco:walk does: number and title, location path, description, no empty line', () => {
+  it('write each note text as vuco:walk does: number and title, location path, then the description and its line breaks', () => {
+    let fourLevels = 0;
+    let multiLineDescriptions = 0;
     for (const [, { manifest }] of allSamples()) {
       manifest.notes.forEach((note, index) => {
-        const lines = note.text.split('\n');
-        expect(lines.length).toBeGreaterThanOrEqual(2);
-        expect(lines.length).toBeLessThanOrEqual(3);
-        expect(lines.every((line) => line.trim() !== '' && line === line.trim())).toBe(true);
-        expect(lines[0].startsWith(`${index + 1}. `)).toBe(true);
-        expect(lines[0].length).toBeGreaterThan(`${index + 1}. `.length);
-        expect(lines[1].split(' › ').every((name) => name.trim() !== '')).toBe(true);
-        if (note.location !== undefined) expect(lines[1]).toBe(note.location.join(' › '));
+        const [first, second, ...description] = note.text.split('\n');
+        // "<number>. <title>", or "<number>." for an item without a title.
+        const number = `${index + 1}.`;
+        expect(first === number || (first.startsWith(`${number} `) && first.length > number.length + 1 && first === first.trim())).toBe(true);
+        // The location path joined by " › "; a line is left out when empty, so none here is.
+        expect(second.split(' › ').every((name) => name.trim() !== '')).toBe(true);
+        if (note.location !== undefined) expect(second).toBe(note.location.join(' › '));
+        expect(description.every((line) => line.trim() !== '')).toBe(true);
+        if ((note.location?.length ?? 0) >= 4) fourLevels += 1;
+        if (description.length > 1) multiLineDescriptions += 1;
       });
     }
+    expect([fourLevels, multiLineDescriptions]).toEqual([1, 1]);
   });
 
   it('pair photos oldest first, from each note’s own photos', () => {
