@@ -14,7 +14,7 @@ interface ExplainerCardProps {
   icon?: IconName;
   title: string;
   /** Benefit rows: an icon + one short line each (N26 Spaces anatomy). */
-  rows: ExplainerRow[];
+  rows: readonly ExplainerRow[];
   ctaLabel: string;
   onCta: () => void;
   /** The primary button's own states (kit 0.10.0), passed to its `ButtonPrimary`: disabled, and pending with its progress text. */
@@ -37,7 +37,7 @@ interface ExplainerCardProps {
  * gap between them. The icons are decoration, hidden from screen readers, which read the lines alone. With a `testID`,
  * row `i` is `${testID}-row-${i}`.
  */
-export function ExplainerRows({ rows, testID }: { rows: ExplainerRow[]; testID?: string }) {
+export function ExplainerRows({ rows, testID }: { rows: readonly ExplainerRow[]; testID?: string }) {
   return (
     <>
       {/* Keyed by index (review P4): the same icon may legitimately repeat across rows in a

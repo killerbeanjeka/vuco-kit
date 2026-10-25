@@ -15,11 +15,17 @@ Upgrading an app:
   `bundledNativeModules.json` gives, which is the list `npx expo-doctor` prints (react-native 0.86.3,
   react-native-reanimated 4.5.1, react-native-worklets 0.10.1, react-native-screens ~4.26.0, the
   Expo modules' patches), by explicit versions rather than `expo install --fix`.
-- TypeScript stays `~5.9.3`, the kit's peer, where the SDK suggests `~6.0.3`: add `typescript` to
-  `expo.install.exclude` in the app's `package.json`, and doctor's version check passes.
+- npm stops that install with ERESOLVE while the lockfile still holds `@react-native/jest-preset`
+  0.86.0, which react-native 0.86.0's exact optional peer keeps there. Delete the lockfile's
+  `node_modules/@react-native/jest-preset` entry, then install.
+- TypeScript stays `~5.9.3`, the kit's peer, where the SDK suggests `~6.0.3`. Add `typescript` to
+  `expo.install.exclude` in the app's `package.json`, with any other package the app holds off the set
+  on purpose (vuco keeps react-native-view-shot at 5.1.1, where the set has 5.1.0); doctor's version
+  check then passes. Drop the `typescript` entry when the kit's `typescript` peer moves to 6.
 - The native modules changed: rebuild the dev client from `npx expo prebuild --clean`.
-- Behaviour an app sees: an assertive `Banner` moves the focus to its message, and its action label
-  wraps beside the chevron. `ExplainerCard`'s row icons are hidden from screen readers and its rows
+- Behaviour an app sees: an assertive `Banner` asks TalkBack to focus its message 500 ms after it
+  appears, and its message Text is accessible on Android; its action label wraps beside the chevron.
+  A test that checks the focus advances timers by 500 ms. `ExplainerCard`'s row icons are hidden from screen readers and its rows
   take testIDs, so a test that finds a row's glyph needs `includeHiddenElements: true`. `OptionRow`
   stays a radio unless the app passes `role`.
 
@@ -27,10 +33,16 @@ Upgrading an app:
   0.86.3, expo-router 57.0.29, expo-localization 57.0.2, jest-expo 57.0.6, eslint-config-expo 57.0.2,
   babel-preset-expo 57.0.16, react-native-reanimated 4.5.1, react-native-worklets 0.10.1), and the
   peers above follow the apps' new specifiers. The lockfile moves only what the set requires.
-- `Banner`: `assertive` moves accessibility focus to the message `Text`, an accessible node, where it
-  asked for the root View, which TalkBack does not focus (vuco:walk Story 2.7). The root keeps its
-  `alert` role and its live region and stays not accessible itself, so the action is still reached
-  on its own. The action's label shrinks and wraps, as `ActionChip`'s does, so the chevron stays
+- `Banner`: `assertive` asks for accessibility focus on the message `Text`, where it asked for the root
+  View, which TalkBack does not focus (vuco:walk Story 2.7). The message is made `accessible`, which
+  Android leaves off for a Text without `onPress`, and the one request goes through
+  `AccessibilityInfo.sendAccessibilityEvent(message, 'focus')` (`setAccessibilityFocus` is
+  deprecated) 500 ms after the banner appears, its timer cleared if the banner goes first. On the
+  Android emulator with TalkBack, a request on mount took the focus for a banner that appears with its
+  screen (Export all with no project) but lost it for one that appears on a settled screen (Capture's
+  low-storage warning after a shot), where the focus stayed on the first control; 500 ms after the
+  banner appears it took the focus in both. The root keeps its `alert` role and its live region and
+  stays not accessible itself, so the action is still reached on its own. The action's label shrinks and wraps, as `ActionChip`'s does, so the chevron stays
   inside the banner at font scale 2.0 (vuco:walk Story 3.5).
 - `OptionRow`: an optional `role`, `'radio'` (the default, as before) or `'checkbox'`, for rows that
   each switch on and off by themselves (vuco:walk's report sections). The state is `checked` either
@@ -38,7 +50,7 @@ Upgrading an app:
 - `ExplainerCard`: the row list is exported as `ExplainerRows({ rows, testID? })`, which renders the
   rows without a container, so the caller sets the gap; the card keeps its own around it. The row
   icons are hidden from screen readers (`accessibilityElementsHidden`, `importantForAccessibility="no"`),
-  so TalkBack reads each line alone and never a glyph (vuco:walk's Paywall sheet). With a `testID`,
+  so TalkBack reads each line alone and never a row's glyph (vuco:walk's Paywall sheet). With a `testID`,
   row `i` is `${testID}-row-${i}`, in the card and on its own.
 - Icons: `sort-numeric-ascending` (vuco:walk's "Renumber items"). The icon test checks that it is a
   MaterialCommunityIcons glyph and listed once.
@@ -46,8 +58,10 @@ Upgrading an app:
   follows the app theme. A surface's own dark-only texts sit in files the app's allowlist names.
 - README: the contracts of `OptionRow`, `Banner`, `ExplainerCard` and `darkTreatment`, and the SDK
   set's expo version.
-- Tests: the assertive focus on the message's node (once, never the root's) and none for a polite
-  banner, the wrapping action label, `OptionRow` as a radio and as a checkbox, the hidden row icons
+- Tests: the accessible message, the one focus request on the message's instance 500 ms after the
+  banner appears (fake timers; never the root's), none for a polite banner and none once a banner
+  goes before the delay ends, its timer cleared; the peer floors against the devDependencies
+  (`test/consumer/peerFloors.test.mjs`); the wrapping action label, `OptionRow` as a radio and as a checkbox, the hidden row icons
   and row ids in the card and in `ExplainerRows`, and the new icon name.
 
 ## 0.11.0 — 2026-10-23

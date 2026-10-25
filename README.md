@@ -133,11 +133,14 @@ role and state on every control.
   place. A label too long for its row wraps inside the pill, beside its icons.
 - `ChoiceChip` — one option of a pick-one group: selected is filled, unselected sits on
   `surface-sunken`; a 32 dp lozenge with a hit slop that reaches the 48 dp floor.
-- `Banner` — the single amber caution surface: icon, one line, optional action. `assertive` moves
-  accessibility focus to the message on mount and announces as an alert; the screen still disables
-  its own primary button. The root is a live region that is not accessible itself, so the message
-  and the action are reached separately. An action label too long for the banner wraps, and its
-  chevron stays inside.
+- `Banner` — the single amber caution surface: icon, one line, optional action. `assertive` announces
+  as an alert and, 500 ms after the banner appears, asks the screen reader to focus the message (an
+  accessible Text); the screen still disables its own primary button. On the Android emulator with
+  TalkBack the request took the focus both on a settled screen and on a screen that opens with the
+  banner, where a request on mount lost it on the settled screen. A banner gone within the 500 ms
+  asks nothing. The root is a live region that is not accessible itself, so the message and the
+  action are reached separately. An action label too long for the banner wraps, and its chevron
+  stays inside.
 - `ScreenHeader` — the one back or close control of a full screen: icon-only (the word lives in the
   accessibility label), pops a pushed screen and dismisses a modal, and falls back to
   `router.replace(fallback)` when there is nothing to go back to.

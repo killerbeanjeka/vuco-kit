@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { createRef } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, type TextInput } from 'react-native';
 
@@ -387,7 +387,7 @@ describe('ExplainerRows (kit 0.12.0: the card rows on their own, for vuco:walk F
   it('renders the rows without a container of its own, each an icon and one line, row i as `${testID}-row-${i}`', async () => {
     await render(
       <View testID="list" className="gap-4">
-        <ExplainerRows testID="free" rows={[...rows]} />
+        <ExplainerRows testID="free" rows={rows} />
       </View>,
     );
     // The caller's View holds the rows directly, so its gap spaces them.
@@ -532,25 +532,24 @@ describe('Banner (VAPP-76 one caution surface)', () => {
     expect(screen.getByTestId('bn').props.accessibilityRole).toBe('alert');
   });
 
-  // kit 0.12.0 (vuco:walk Story 2.7, B4): TalkBack ignores a focus request for a view that is not accessible, and the
-  // root View is not, so the focus goes to the message Text, which is.
-  describe('the focus an assertive banner takes on mount (kit 0.12.0)', () => {
+  // kit 0.12.0 (vuco:walk Story 2.7, B4): TalkBack does not take the focus to a view that is not accessible. The root
+  // View is not, and on Android neither is a Text without onPress, so the message Text is made accessible and the request
+  // goes to it, 500 ms after the banner appears (the delay that won on the emulator, K12).
+  describe('the focus an assertive banner asks for (kit 0.12.0)', () => {
     type Fiber = { type: unknown; stateNode: unknown; return: Fiber | null };
-    const focus = jest.mocked(AccessibilityInfo.setAccessibilityFocus);
-    const NODE = 4242;
-    /** The handles asked for, by the ref they were asked for: the Jest double has no native views, so each gets NODE. */
-    let nodeOf: jest.Mock<number | null, [unknown]>;
+    const sendEvent = jest.mocked(AccessibilityInfo.sendAccessibilityEvent);
+    const message = 'Two entries overlap.';
+    const assertiveBanner = (
+      <Banner testID="bn" message={message} assertive action={{ label: 'Review', onPress: jest.fn(), testID: 'bn-review' }} />
+    );
 
     beforeEach(() => {
-      focus.mockClear();
-      const ReactNative = jest.requireActual<typeof import('react-native')>('react-native');
-      nodeOf = jest.fn((ref: unknown) => (ref == null ? null : NODE));
-      // react-native exports findNodeHandle through a getter; its type says function, so the getter is spied untyped.
-      jest.spyOn(ReactNative as unknown as { findNodeHandle: unknown }, 'findNodeHandle', 'get').mockReturnValue(nodeOf);
+      sendEvent.mockClear();
+      jest.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      jest.useRealTimers();
     });
 
     /** The instances behind a host element: its own and those of the components that render it, up to the host above. */
@@ -568,39 +567,62 @@ describe('Banner (VAPP-76 one caution surface)', () => {
       return instances;
     }
 
-    it("moves the focus to the message's node, once, and not to the root", async () => {
-      const banner = (
-        <Banner testID="bn" message="Two entries overlap." assertive action={{ label: 'Review', onPress: jest.fn(), testID: 'bn-review' }} />
-      );
-      const view = await render(banner);
-      expect(focus).toHaveBeenCalledTimes(1);
-      expect(focus).toHaveBeenCalledWith(NODE);
-      expect(nodeOf).toHaveBeenCalledTimes(1);
-      const [[target]] = nodeOf.mock.calls;
-      expect(instancesBehind(screen.getByText('Two entries overlap.'))).toContain(target);
-      expect(instancesBehind(screen.getByTestId('bn'))).not.toContain(target);
-      // A re-render is not an appearance: no second focus.
-      await view.rerender(banner);
-      expect(focus).toHaveBeenCalledTimes(1);
+    it('makes the message Text accessible, which Android does not for a Text without onPress', async () => {
+      await render(assertiveBanner);
+      expect(screen.getByText(message).props.accessible).toBe(true);
+      await render(<Banner message="Polite too." />);
+      expect(screen.getByText('Polite too.').props.accessible).toBe(true);
     });
 
-    it('a polite banner moves no focus', async () => {
-      await render(<Banner testID="bn" message="Two entries overlap." />);
-      expect(focus).not.toHaveBeenCalled();
+    it("asks for the focus on the message's instance, once, 500 ms after the banner appears, and never on the root", async () => {
+      const view = await render(assertiveBanner);
+      await act(() => jest.advanceTimersByTime(499));
+      expect(sendEvent).not.toHaveBeenCalled();
+      await act(() => jest.advanceTimersByTime(1));
+      expect(sendEvent).toHaveBeenCalledTimes(1);
+      const [[target, eventType]] = sendEvent.mock.calls;
+      expect(eventType).toBe('focus');
+      expect(instancesBehind(screen.getByText(message))).toContain(target);
+      expect(instancesBehind(screen.getByTestId('bn'))).not.toContain(target);
+      // A re-render is not an appearance: no second request.
+      await view.rerender(assertiveBanner);
+      await act(() => jest.advanceTimersByTime(1000));
+      expect(sendEvent).toHaveBeenCalledTimes(1);
+    });
+
+    it('a polite banner asks for no focus', async () => {
+      await render(<Banner testID="bn" message={message} />);
+      await act(() => jest.advanceTimersByTime(1000));
+      expect(sendEvent).not.toHaveBeenCalled();
       expect(screen.getByTestId('bn').props.accessibilityLiveRegion).toBe('polite');
       expect(screen.getByTestId('bn').props.accessibilityRole).toBeUndefined();
     });
 
+    it('a banner gone before the 500 ms are up asks for nothing', async () => {
+      const setSpy = jest.spyOn(globalThis, 'setTimeout');
+      const clearSpy = jest.spyOn(globalThis, 'clearTimeout');
+      const view = await render(assertiveBanner);
+      const index = setSpy.mock.calls.findIndex(([, ms]) => ms === 500);
+      expect(index).toBeGreaterThanOrEqual(0);
+      const timer = setSpy.mock.results[index].value;
+      await act(() => jest.advanceTimersByTime(300));
+      await view.unmount();
+      // Its timer is cleared with it, not merely left to find no message.
+      expect(clearSpy).toHaveBeenCalledWith(timer);
+      await act(() => jest.advanceTimersByTime(1000));
+      expect(sendEvent).not.toHaveBeenCalled();
+      setSpy.mockRestore();
+      clearSpy.mockRestore();
+    });
+
     it('keeps the root a live-region alert that is not accessible itself, so the message and the action stay separately reachable', async () => {
-      await render(
-        <Banner testID="bn" message="Two entries overlap." assertive action={{ label: 'Review', onPress: jest.fn(), testID: 'bn-review' }} />,
-      );
+      await render(assertiveBanner);
       const root = screen.getByTestId('bn');
       expect(root.props.accessible).toBeUndefined();
       expect(root.props.accessibilityRole).toBe('alert');
       expect(root.props.accessibilityLiveRegion).toBe('assertive');
-      // The message is a node of its own (a Text is accessible), and the action a button of its own.
-      expect(screen.getByText('Two entries overlap.').props.accessible).not.toBe(false);
+      // The message is a node of its own, and the action a button of its own.
+      expect(screen.getByText(message).props.accessible).toBe(true);
       expect(screen.getByRole('button', { name: 'Review' })).toBe(screen.getByTestId('bn-review'));
     });
   });
