@@ -89,6 +89,9 @@ export const ICON_NAMES = [
   'bookmark-outline',
   'bookmark-plus-outline',
   'bookmark-remove-outline',
+  // Kit 0.12.0 (vuco:walk Story 3.6's review): "Renumber items" in the project menu, a numbered sort (U+F1389), where
+  // it showed the drag handle.
+  'sort-numeric-ascending',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

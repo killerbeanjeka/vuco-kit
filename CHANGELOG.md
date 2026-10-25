@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.12.0 — 2026-10-25
+
+Kit release C: the Expo SDK patch. The kit moves to expo 57.0.31's package set, whose React Native
+0.86.3 carries Hermes V1 250829098.0.17; 250829098.0.15 and earlier have the memory regression that
+`expo doctor` reports on expo 57.0.6. It also carries six fixes vuco:walk's ledger held for this
+release. Nothing under `tokens` or `config` changed.
+
+Upgrading an app:
+
+- The peers rise to the SDK patch (`expo ~57.0.31`, `react-native ~0.86.3`, `expo-router ~57.0.29`,
+  `expo-localization ~57.0.2`, `eslint-config-expo ~57.0.2`), and npm refuses the kit beside an older
+  set. Move the SDK set and the pin together: install each package at the range expo 57.0.31's
+  `bundledNativeModules.json` gives, which is the list `npx expo-doctor` prints (react-native 0.86.3,
+  react-native-reanimated 4.5.1, react-native-worklets 0.10.1, react-native-screens ~4.26.0, the
+  Expo modules' patches), by explicit versions rather than `expo install --fix`.
+- TypeScript stays `~5.9.3`, the kit's peer, where the SDK suggests `~6.0.3`: add `typescript` to
+  `expo.install.exclude` in the app's `package.json`, and doctor's version check passes.
+- The native modules changed: rebuild the dev client from `npx expo prebuild --clean`.
+- Behaviour an app sees: an assertive `Banner` moves the focus to its message, and its action label
+  wraps beside the chevron. `ExplainerCard`'s row icons are hidden from screen readers and its rows
+  take testIDs, so a test that finds a row's glyph needs `includeHiddenElements: true`. `OptionRow`
+  stays a radio unless the app passes `role`.
+
+- `package.json`: the devDependencies take the set's exact versions (expo 57.0.31, react-native
+  0.86.3, expo-router 57.0.29, expo-localization 57.0.2, jest-expo 57.0.6, eslint-config-expo 57.0.2,
+  babel-preset-expo 57.0.16, react-native-reanimated 4.5.1, react-native-worklets 0.10.1), and the
+  peers above follow the apps' new specifiers. The lockfile moves only what the set requires.
+- `Banner`: `assertive` moves accessibility focus to the message `Text`, an accessible node, where it
+  asked for the root View, which TalkBack does not focus (vuco:walk Story 2.7). The root keeps its
+  `alert` role and its live region and stays not accessible itself, so the action is still reached
+  on its own. The action's label shrinks and wraps, as `ActionChip`'s does, so the chevron stays
+  inside the banner at font scale 2.0 (vuco:walk Story 3.5).
+- `OptionRow`: an optional `role`, `'radio'` (the default, as before) or `'checkbox'`, for rows that
+  each switch on and off by themselves (vuco:walk's report sections). The state is `checked` either
+  way, and the row looks the same.
+- `ExplainerCard`: the row list is exported as `ExplainerRows({ rows, testID? })`, which renders the
+  rows without a container, so the caller sets the gap; the card keeps its own around it. The row
+  icons are hidden from screen readers (`accessibilityElementsHidden`, `importantForAccessibility="no"`),
+  so TalkBack reads each line alone and never a glyph (vuco:walk's Paywall sheet). With a `testID`,
+  row `i` is `${testID}-row-${i}`, in the card and on its own.
+- Icons: `sort-numeric-ascending` (vuco:walk's "Renumber items"). The icon test checks that it is a
+  MaterialCommunityIcons glyph and listed once.
+- `AGENTS.md`: the dark treatment names the seven primitives that take it, and every other primitive
+  follows the app theme. A surface's own dark-only texts sit in files the app's allowlist names.
+- README: the contracts of `OptionRow`, `Banner`, `ExplainerCard` and `darkTreatment`, and the SDK
+  set's expo version.
+- Tests: the assertive focus on the message's node (once, never the root's) and none for a polite
+  banner, the wrapping action label, `OptionRow` as a radio and as a checkbox, the hidden row icons
+  and row ids in the card and in `ExplainerRows`, and the new icon name.
+
 ## 0.11.0 — 2026-10-23
 
 Kit release B (vuco:walk Story 8.1): `.vuco` format 1.1, for the bundles vuco:walk will send with a

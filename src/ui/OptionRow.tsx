@@ -24,6 +24,12 @@ interface OptionRowProps {
    * location row read with its parent, "Kitchen, in Flat 4"). Falls back to `label`.
    */
   accessibilityLabel?: string;
+  /**
+   * What a screen reader calls the row (kit 0.12.0): `'radio'`, one option of a pick-one group (the default), or
+   * `'checkbox'`, for rows that each switch on and off by themselves (vuco:walk's report sections). Either way the
+   * state is `checked`, and the row looks the same.
+   */
+  role?: 'radio' | 'checkbox';
   testID?: string;
 }
 
@@ -31,7 +37,7 @@ interface OptionRowProps {
 // `link`-petrol label + a vector check (never colour alone, NFR-1 — the check is the shape signal).
 // Standalone it is a filled raised pill; `grouped` folds it into one hairline-divided card. The row
 // is a ≥48dp target (min-height 56, grows with fontScale). Under the dark treatment (kit 0.7.0) it shows its
-// dark-mode look in both themes.
+// dark-mode look in both themes. A radio by default; `role="checkbox"` (kit 0.12.0) for independent toggles.
 export function OptionRow({
   label,
   selected,
@@ -40,6 +46,7 @@ export function OptionRow({
   grouped = false,
   divider = false,
   accessibilityLabel,
+  role = 'radio',
   testID,
 }: OptionRowProps) {
   const dark = useDarkTreatment();
@@ -47,7 +54,7 @@ export function OptionRow({
   return (
     <Pressable
       testID={testID}
-      accessibilityRole="radio"
+      accessibilityRole={role}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ checked: selected }}
       onPress={onPress}

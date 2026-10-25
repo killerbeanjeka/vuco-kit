@@ -31,12 +31,39 @@ interface ExplainerCardProps {
   testID?: string;
 }
 
+/**
+ * The card's benefit rows on their own (kit 0.12.0, for vuco:walk's First run, which lists them outside a card): an
+ * icon in the link ink and one short line each. The rows render without a container, so the caller's layout sets the
+ * gap between them. The icons are decoration, hidden from screen readers, which read the lines alone. With a `testID`,
+ * row `i` is `${testID}-row-${i}`.
+ */
+export function ExplainerRows({ rows, testID }: { rows: ExplainerRow[]; testID?: string }) {
+  return (
+    <>
+      {/* Keyed by index (review P4): the same icon may legitimately repeat across rows in a
+          reused explainer, so the icon name is not a stable key. */}
+      {rows.map((row, index) => (
+        <View key={index} testID={testID ? `${testID}-row-${index}` : undefined} className="w-full flex-row items-start gap-3">
+          <Icon
+            name={row.icon}
+            size={22}
+            className="mt-0.5 text-link dark:text-link-dark"
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text className="flex-1 font-body text-body text-ink-primary dark:text-ink-primary-dark">{row.text}</Text>
+        </View>
+      ))}
+    </>
+  );
+}
+
 // Reusable explainer (VAPP-74, N26 Spaces pattern): header icon + title + benefit rows + a
 // primary CTA + an optional secondary link. Content-only — the consumer owns the container
 // (a Sheet for the tax fork; the same anatomy is wanted later for the chase-ladder intro).
 // The button can be disabled or pending (kit 0.10.0, vuco:walk's paywall: Buy waits for the store's price, and
 // shows progress text while the purchase runs), and the secondary link can be disabled (Restore, offline); without
-// those props both are as they were.
+// those props both are as they were. The rows are `ExplainerRows` (kit 0.12.0), whose icons screen readers skip.
 export function ExplainerCard({
   icon,
   title,
@@ -64,16 +91,7 @@ export function ExplainerCard({
       </View>
 
       <View className="gap-4">
-        {/* Keyed by index (review P4): the same icon may legitimately repeat across rows in a
-            reused explainer, so the icon name is not a stable key. */}
-        {rows.map((row, index) => (
-          <View key={index} className="w-full flex-row items-start gap-3">
-            <Icon name={row.icon} size={22} className="mt-0.5 text-link dark:text-link-dark" />
-            <Text className="flex-1 font-body text-body text-ink-primary dark:text-ink-primary-dark">
-              {row.text}
-            </Text>
-          </View>
-        ))}
+        <ExplainerRows rows={rows} testID={testID} />
       </View>
 
       {children}

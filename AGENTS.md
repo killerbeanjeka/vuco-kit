@@ -47,9 +47,10 @@ older SDK did.
   reason.
 - A surface that is dark in both themes, such as a sheet over a camera, takes the dark treatment
   (`@vuco/kit/src/ui/darkTreatment`): a `Sheet` with `dark`, or `DarkTreatment` around the surface,
-  gives the kit primitives inside it their dark-mode look. Never hand-roll the primitives' `-dark`
-  classes. The surface's own texts take dark-only classes from one file that the app's allowlist
-  names, with its reason.
+  gives the seven primitives that take it their dark-mode look: `Sheet`, `Input`, `ChoiceChip`,
+  `ActionChip`, `OptionRow`, `ButtonPrimary` and `ButtonSecondary`. Every other primitive, `Banner`
+  included, follows the app theme. Never hand-roll the primitives' `-dark` classes. The surface's own
+  dark-only texts sit in files that the app's dark-pairing allowlist names, each with its reason.
 - Money amounts use a money type role with tabular figures and stay fully visible — never
   truncated, ellipsized or greyed out.
 

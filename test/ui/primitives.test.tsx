@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { createRef } from 'react';
-import { StyleSheet, Text, type TextInput } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View, type TextInput } from 'react-native';
 
 import { createI18n } from '../../src/i18n';
 import { ActionChip } from '../../src/ui/ActionChip';
@@ -10,7 +10,7 @@ import { ButtonPrimary } from '../../src/ui/ButtonPrimary';
 import { ButtonSecondary } from '../../src/ui/ButtonSecondary';
 import { ChoiceChip } from '../../src/ui/ChoiceChip';
 import { DARK_TREATMENT, DarkTreatment, useDarkTreatment } from '../../src/ui/darkTreatment';
-import { ExplainerCard } from '../../src/ui/ExplainerCard';
+import { ExplainerCard, ExplainerRows } from '../../src/ui/ExplainerCard';
 import { ICON_NAMES, Icon } from '../../src/ui/icons';
 import { Input } from '../../src/ui/Input';
 import { OptionRow } from '../../src/ui/OptionRow';
@@ -21,6 +21,11 @@ import { SHEET_PANEL_CLASSES, SHEET_SCRIM_CLASSES, Sheet } from '../../src/ui/Sh
 jest.mock('expo-router', () => ({
   router: { canGoBack: jest.fn(() => true), back: jest.fn(), replace: jest.fn() },
 }));
+
+/** The character a kit icon renders for `name`. */
+function iconGlyph(name: string): string {
+  return String.fromCodePoint((Icon as unknown as { glyphMap: Record<string, number> }).glyphMap[name]);
+}
 
 describe('ActionRow (VAPP-72 activation row: done ⟶ disabled ⟶ actionable)', () => {
   it('actionable: a button whose label reads title, subtitle and CTA, and that fires onPress', async () => {
@@ -339,6 +344,77 @@ describe('ExplainerCard (VAPP-74 reusable explainer)', () => {
     // The button beside it is not affected.
     expect(screen.getByTestId('ex6-cta').props.accessibilityState).toMatchObject({ disabled: false });
   });
+
+  // kit 0.12.0 (vuco:walk's Paywall sheet, where TalkBack reached each row's glyph as an item of its own).
+  it('hides each row icon from screen readers, and names row i `${testID}-row-${i}`', async () => {
+    await render(
+      <ExplainerCard
+        testID="ex7"
+        title="T"
+        rows={[
+          { icon: 'percent-outline', text: 'Row A' },
+          { icon: 'shield-check-outline', text: 'Row B' },
+        ]}
+        ctaLabel="Go"
+        onCta={jest.fn()}
+      />,
+    );
+    (
+      [
+        ['percent-outline', 'Row A'],
+        ['shield-check-outline', 'Row B'],
+      ] as const
+    ).forEach(([icon, text], index) => {
+      const row = within(screen.getByTestId(`ex7-row-${index}`));
+      expect(row.getByText(text).props.className).toContain('flex-1 font-body text-body');
+      // The glyph is drawn, but a query that skips what screen readers skip does not reach it.
+      expect(row.queryByText(iconGlyph(icon))).toBeNull();
+      const glyph = row.getByText(iconGlyph(icon), { includeHiddenElements: true });
+      expect(glyph.props.accessibilityElementsHidden).toBe(true);
+      expect(glyph.props.importantForAccessibility).toBe('no');
+    });
+    expect(screen.queryByTestId('ex7-row-2')).toBeNull();
+  });
+});
+
+describe('ExplainerRows (kit 0.12.0: the card rows on their own, for vuco:walk First run)', () => {
+  const rows = [
+    { icon: 'briefcase-outline', text: '2 projects' },
+    { icon: 'camera-outline', text: '20 items each' },
+    { icon: 'camera-outline', text: 'A footer on reports' },
+  ] as const;
+
+  it('renders the rows without a container of its own, each an icon and one line, row i as `${testID}-row-${i}`', async () => {
+    await render(
+      <View testID="list" className="gap-4">
+        <ExplainerRows testID="free" rows={[...rows]} />
+      </View>,
+    );
+    // The caller's View holds the rows directly, so its gap spaces them.
+    expect(screen.getByTestId('list').children).toEqual(rows.map((_, index) => screen.getByTestId(`free-row-${index}`)));
+    rows.forEach(({ icon, text }, index) => {
+      const row = within(screen.getByTestId(`free-row-${index}`));
+      expect(screen.getByTestId(`free-row-${index}`).props.className).toBe('w-full flex-row items-start gap-3');
+      expect(row.getByText(text).props.className).toBe('flex-1 font-body text-body text-ink-primary dark:text-ink-primary-dark');
+      expect(row.queryByText(iconGlyph(icon))).toBeNull();
+      const glyph = row.getByText(iconGlyph(icon), { includeHiddenElements: true });
+      expect(glyph.props.accessibilityElementsHidden).toBe(true);
+      expect(glyph.props.importantForAccessibility).toBe('no');
+    });
+  });
+
+  it('gives the rows no testID without one, and still hides their icons', async () => {
+    await render(
+      <View testID="plain">
+        <ExplainerRows rows={[{ icon: 'draw', text: 'Your logo' }]} />
+      </View>,
+    );
+    const [row] = screen.getByTestId('plain').children;
+    expect(typeof row === 'string' ? row : row.props.testID).toBeUndefined();
+    expect(screen.getByText('Your logo')).toBeOnTheScreen();
+    expect(screen.queryByText(iconGlyph('draw'))).toBeNull();
+    expect(screen.getByText(iconGlyph('draw'), { includeHiddenElements: true }).props.importantForAccessibility).toBe('no');
+  });
 });
 
 describe('the VAPP-76 chip system (3 roles)', () => {
@@ -400,6 +476,43 @@ describe('OptionRow (a radio row of a picker)', () => {
     expect(screen.getByTestId('or').props.accessibilityLabel).toBe('Kitchen, in Flat 4');
     expect(screen.getByTestId('or').props.accessibilityState).toMatchObject({ checked: false });
   });
+
+  // kit 0.12.0 (vuco:walk's Report builder: sections that each switch on and off by themselves).
+  it('is a radio by default, and a checkbox with role="checkbox", each with its checked state and the same look', async () => {
+    const onPress = jest.fn();
+    await render(
+      <>
+        <OptionRow label="Cover page" selected onPress={jest.fn()} grouped testID="radio" />
+        <OptionRow label="Photos" selected onPress={onPress} grouped divider role="checkbox" testID="checkbox" />
+        <OptionRow label="Signature" selected={false} onPress={jest.fn()} grouped divider role="checkbox" testID="unchecked" />
+      </>,
+    );
+    const radio = screen.getByTestId('radio');
+    expect(radio.props.accessibilityRole).toBe('radio');
+    expect(radio.props.accessibilityState).toMatchObject({ checked: true });
+    const checkbox = screen.getByRole('checkbox', { name: 'Photos' });
+    expect(checkbox).toBe(screen.getByTestId('checkbox'));
+    expect(checkbox.props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole('checkbox', { name: 'Signature' }).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.queryByRole('radio', { name: 'Photos' })).toBeNull();
+    expect(screen.getByTestId('checkbox-check')).toBeOnTheScreen();
+    expect(screen.queryByTestId('unchecked-check')).toBeNull();
+    await fireEvent.press(checkbox);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('looks the same whatever its role: the role changes only what a screen reader says', async () => {
+    const view = await render(<OptionRow label="Photos" selected onPress={jest.fn()} grouped divider testID="row" />);
+    const shown = () => ({
+      row: screen.getByTestId('row').props.className,
+      label: screen.getByText('Photos').props.className,
+      check: screen.getByTestId('row-check').props.className,
+    });
+    const asRadio = shown();
+    await view.rerender(<OptionRow label="Photos" selected onPress={jest.fn()} grouped divider role="checkbox" testID="row" />);
+    expect(screen.getByTestId('row').props.accessibilityRole).toBe('checkbox');
+    expect(shown()).toEqual(asRadio);
+  });
 });
 
 describe('Banner (VAPP-76 one caution surface)', () => {
@@ -417,6 +530,91 @@ describe('Banner (VAPP-76 one caution surface)', () => {
     await render(<Banner testID="bn" message="Conflict" assertive />);
     expect(screen.getByTestId('bn').props.accessibilityLiveRegion).toBe('assertive');
     expect(screen.getByTestId('bn').props.accessibilityRole).toBe('alert');
+  });
+
+  // kit 0.12.0 (vuco:walk Story 2.7, B4): TalkBack ignores a focus request for a view that is not accessible, and the
+  // root View is not, so the focus goes to the message Text, which is.
+  describe('the focus an assertive banner takes on mount (kit 0.12.0)', () => {
+    type Fiber = { type: unknown; stateNode: unknown; return: Fiber | null };
+    const focus = jest.mocked(AccessibilityInfo.setAccessibilityFocus);
+    const NODE = 4242;
+    /** The handles asked for, by the ref they were asked for: the Jest double has no native views, so each gets NODE. */
+    let nodeOf: jest.Mock<number | null, [unknown]>;
+
+    beforeEach(() => {
+      focus.mockClear();
+      const ReactNative = jest.requireActual<typeof import('react-native')>('react-native');
+      nodeOf = jest.fn((ref: unknown) => (ref == null ? null : NODE));
+      // react-native exports findNodeHandle through a getter; its type says function, so the getter is spied untyped.
+      jest.spyOn(ReactNative as unknown as { findNodeHandle: unknown }, 'findNodeHandle', 'get').mockReturnValue(nodeOf);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    /** The instances behind a host element: its own and those of the components that render it, up to the host above. */
+    function instancesBehind(element: unknown): unknown[] {
+      const start = (element as { unstable_fiber: Fiber }).unstable_fiber;
+      const instances: unknown[] = [];
+      for (let fiber: Fiber | null = start; fiber !== null; fiber = fiber.return) {
+        if (fiber !== start && typeof fiber.type === 'string') {
+          break;
+        }
+        if (fiber.stateNode != null) {
+          instances.push(fiber.stateNode);
+        }
+      }
+      return instances;
+    }
+
+    it("moves the focus to the message's node, once, and not to the root", async () => {
+      const banner = (
+        <Banner testID="bn" message="Two entries overlap." assertive action={{ label: 'Review', onPress: jest.fn(), testID: 'bn-review' }} />
+      );
+      const view = await render(banner);
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(focus).toHaveBeenCalledWith(NODE);
+      expect(nodeOf).toHaveBeenCalledTimes(1);
+      const [[target]] = nodeOf.mock.calls;
+      expect(instancesBehind(screen.getByText('Two entries overlap.'))).toContain(target);
+      expect(instancesBehind(screen.getByTestId('bn'))).not.toContain(target);
+      // A re-render is not an appearance: no second focus.
+      await view.rerender(banner);
+      expect(focus).toHaveBeenCalledTimes(1);
+    });
+
+    it('a polite banner moves no focus', async () => {
+      await render(<Banner testID="bn" message="Two entries overlap." />);
+      expect(focus).not.toHaveBeenCalled();
+      expect(screen.getByTestId('bn').props.accessibilityLiveRegion).toBe('polite');
+      expect(screen.getByTestId('bn').props.accessibilityRole).toBeUndefined();
+    });
+
+    it('keeps the root a live-region alert that is not accessible itself, so the message and the action stay separately reachable', async () => {
+      await render(
+        <Banner testID="bn" message="Two entries overlap." assertive action={{ label: 'Review', onPress: jest.fn(), testID: 'bn-review' }} />,
+      );
+      const root = screen.getByTestId('bn');
+      expect(root.props.accessible).toBeUndefined();
+      expect(root.props.accessibilityRole).toBe('alert');
+      expect(root.props.accessibilityLiveRegion).toBe('assertive');
+      // The message is a node of its own (a Text is accessible), and the action a button of its own.
+      expect(screen.getByText('Two entries overlap.').props.accessible).not.toBe(false);
+      expect(screen.getByRole('button', { name: 'Review' })).toBe(screen.getByTestId('bn-review'));
+    });
+  });
+
+  // kit 0.12.0 (vuco:walk Story 3.5: a German label at font scale 2.0 wrapped, and pushed the chevron out of the banner).
+  it("lets the action's label shrink and wrap, with the chevron after it in the same row, as ActionChip's label does", async () => {
+    const label = 'Mit einer kleineren Datei teilen, die in jede E-Mail passt';
+    await render(<Banner message="The file is too big for most email." action={{ label, onPress: jest.fn(), testID: 'bn-action' }} />);
+    const action = screen.getByTestId('bn-action');
+    expect(action.props.className).toContain('flex-row');
+    expect(
+      action.children.map((child) => (typeof child === 'string' ? child : child.children.join(''))),
+    ).toEqual([label, iconGlyph('chevron-right')]);
+    expect(screen.getByText(label).props.className).toMatch(/(^|\s)shrink(\s|$)/);
   });
 });
 
@@ -537,7 +735,7 @@ describe('The kit namespace words (ScreenHeader back / close, Sheet backdrop)', 
   });
 });
 
-describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs; 0.6.0 move and copy; 0.7.0 the calendar; 0.8.0 the bookmarks)', () => {
+describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and draw; 0.5.0 the menu and reorder glyphs; 0.6.0 move and copy; 0.7.0 the calendar; 0.8.0 the bookmarks; 0.12.0 the numbered sort)', () => {
   it('lists every name once, and each is a MaterialCommunityIcons glyph', () => {
     const { glyphMap } = Icon as unknown as { glyphMap: Record<string, number> };
     expect(ICON_NAMES.filter((name) => !(name in glyphMap))).toEqual([]);
@@ -553,6 +751,9 @@ describe('Icon names (kit 0.4.0 adds camera, map marker, share, image, undo and 
     expect(ICON_NAMES).toEqual(
       expect.arrayContaining(['bookmark-outline', 'bookmark-plus-outline', 'bookmark-remove-outline']),
     );
+    // vuco:walk's "Renumber items": the numbered sort, U+F1389.
+    expect(ICON_NAMES).toEqual(expect.arrayContaining(['sort-numeric-ascending']));
+    expect(iconGlyph('sort-numeric-ascending')).toBe(String.fromCodePoint(0xf1389));
   });
 });
 

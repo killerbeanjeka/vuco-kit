@@ -50,10 +50,10 @@ An app that already has these files keeps its import paths by turning each old f
 re-export, `export * from '@vuco/kit/src/ui/<Name>';`. It carries every named export — constants,
 hooks and types included. `export *` never re-exports a default export, and kit files have none.
 
-The app provides the peer dependencies at the versions in `package.json` (the Expo SDK 57 set). The
-optional ones — `eslint`, `eslint-config-expo`, `expo`, `typescript`, `@types/jest` — are what
-`config/*` needs; an app that does not extend the configs can leave them out. The app wires the kit
-in six places:
+The app provides the peer dependencies at the versions in `package.json` (the Expo SDK 57 set of
+expo 57.0.31). The optional ones — `eslint`, `eslint-config-expo`, `expo`, `typescript`,
+`@types/jest` — are what `config/*` needs; an app that does not extend the configs can leave them
+out. The app wires the kit in six places:
 
 - **Theme and fonts** — `tailwind.config.js` extends its theme with
   `require('@vuco/kit/tokens/out/vuco/nativewind-theme.cjs').theme` (the module's `vuco` export holds
@@ -120,8 +120,10 @@ role and state on every control.
   `SHEET_PANEL_CLASSES` carry the same chrome for route-based sheets. `dark` gives it the dark treatment
   (below), and `animationType` is `'slide'` unless the app passes `'none'` or `'fade'`.
 - `OptionRow` — the selection row of a picker: selected means a primary tint, a `link` label and a
-  check mark (never colour alone), with radio semantics for screen readers. `grouped` rows sit flat in
-  one card, with `divider` on every row but the first.
+  check mark (never colour alone), with radio semantics for screen readers. `role="checkbox"` gives
+  checkbox semantics instead, for rows that each switch on and off by themselves; the state is
+  `checked` either way, and the row looks the same. `grouped` rows sit flat in one card, with
+  `divider` on every row but the first.
 - `ActionRow` — a tappable row: icon tile, title, one-line subtitle, and a trailing slot that shows
   its own state (a call-to-action lozenge, a done check, or a lock). Done and disabled rows are not
   pressable.
@@ -131,9 +133,11 @@ role and state on every control.
   place. A label too long for its row wraps inside the pill, beside its icons.
 - `ChoiceChip` — one option of a pick-one group: selected is filled, unselected sits on
   `surface-sunken`; a 32 dp lozenge with a hit slop that reaches the 48 dp floor.
-- `Banner` — the single amber caution surface: icon, one line, optional action. `assertive` takes
-  accessibility focus on mount and announces as an alert; the screen still disables its own primary
-  button.
+- `Banner` — the single amber caution surface: icon, one line, optional action. `assertive` moves
+  accessibility focus to the message on mount and announces as an alert; the screen still disables
+  its own primary button. The root is a live region that is not accessible itself, so the message
+  and the action are reached separately. An action label too long for the banner wraps, and its
+  chevron stays inside.
 - `ScreenHeader` — the one back or close control of a full screen: icon-only (the word lives in the
   accessibility label), pops a pushed screen and dismisses a modal, and falls back to
   `router.replace(fallback)` when there is nothing to go back to.
@@ -154,7 +158,9 @@ role and state on every control.
   own states through `ctaDisabled`, `ctaPending` and `ctaPendingLabel`, which go to its `ButtonPrimary`
   (disabled, or pending with progress text); without them it is enabled and idle. They do not change
   the secondary link, which has its own `secondaryDisabled`: not pressable, disabled for screen
-  readers, and in the disabled ink.
+  readers, and in the disabled ink. The row icons are hidden from screen readers, which read each
+  line alone, and with a `testID` row `i` is `${testID}-row-${i}`. `ExplainerRows` renders the same
+  rows on their own, without a container, for a list outside the card: the caller sets the gap.
 - `icons` — the single icon family: `ICON_NAMES` lists the MaterialCommunityIcons glyphs apps may
   use, and `IconName` is their union. Icons take token classes, so no colour value is copied out of
   the theme.
@@ -162,8 +168,8 @@ role and state on every control.
   such as a sheet over a camera. Inside the provider (or a `Sheet` with `dark`), `Sheet`, `Input`,
   `ChoiceChip`, `ActionChip`, `OptionRow`, `ButtonPrimary` and `ButtonSecondary` show their dark-mode look
   in the `-dark` tokens alone (`DARK_TREATMENT`); outside it they keep their paired classes. Other
-  primitives follow the app theme, so an app gives such a surface's own texts its own dark-only classes,
-  in a file its dark-pairing allowlist names.
+  primitives, `Banner` among them, follow the app theme, so an app gives such a surface's own texts
+  their own dark-only classes, in files its dark-pairing allowlist names.
 
 ## Family contracts
 
