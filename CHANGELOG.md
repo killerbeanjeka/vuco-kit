@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- A correction to 0.13.0's notes and to `src/versioning/README.md`. They said EAS's build page shows
+  the four-part name for an iOS build. That holds only while the build is queued: EAS CLI reads
+  `version` when it queues the build, and warns about the four parts. The finished build's record
+  shows the iOS name (vuco's build `136c758a`: queued as `0.3.2.1`, recorded as `0.3.2001`).
+
 ## 0.13.0 — 2026-11-21
 
 The iOS version name. iOS accepts at most three integers in `CFBundleShortVersionString`, and the
