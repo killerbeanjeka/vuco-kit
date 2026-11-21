@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.13.0 — 2026-11-21
+
+The iOS version name. iOS accepts at most three integers in `CFBundleShortVersionString`, and the
+family's app versions have four. `iosVersionName` in `src/versioning/appVersion.mjs` derives the iOS
+name, `MAJOR.EPIC.(STORY × 1000 + BUILD)`: `0.3.1.4` is `0.3.1004` on iOS (founder, 2026-11-21). It
+replaces the rule that an iOS store build uses the first three segments, under which every fix of a
+story had the same iOS name. Nothing under `tokens`, `config` or `src/ui` changed.
+
+- `iosVersionName(version)` and `IOS_BUILD_BOUND` (1000). The helper throws for a BUILD of 1000 or
+  more and for anything `parseAppVersion` refuses. It has no fallback name.
+- `src/versioning/README.md` ("iOS: STORY and BUILD share the third number") and `AGENTS.md` state
+  the new rule.
+
+Upgrading an app:
+
+- An app without an iOS build changes nothing but the pin.
+- An app that builds for iOS sets `ios.version` to `iosVersionName(config.version)` in a dynamic app
+  config (`app.config.js`). Its app config keeps the one four-part `version`, and its bump script
+  stays as it is.
+
 ## 0.12.0 — 2026-10-25
 
 Kit release C: the Expo SDK patch. The kit moves to expo 57.0.31's package set, whose React Native

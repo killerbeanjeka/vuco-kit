@@ -54,8 +54,29 @@ so EAS raises it on every store build. EAS keeps that counter per project: two a
 numbers, only this scheme. The helper never touches a build number, and EAS never touches the version
 name.
 
-## iOS accepts three segments
+## iOS: STORY and BUILD share the third number
 
 Android's `versionName` is a free string, so four segments are fine there. iOS rejects a
-`CFBundleShortVersionString` with more than three integers. An iOS store build therefore uses the
-first three segments (`MAJOR.EPIC.STORY`) and tells builds apart by its build number.
+`CFBundleShortVersionString` with more than three integers. An iOS build is therefore named
+`MAJOR.EPIC.(STORY × 1000 + BUILD)` (founder, 2026-11-21):
+
+| App version | iOS version name |
+| ----------- | ---------------- |
+| `0.3.1.4`   | `0.3.1004`       |
+| `0.3.2.1`   | `0.3.2001`       |
+| `0.4.0.1`   | `0.4.1`          |
+
+```js
+import { iosVersionName } from '@vuco/kit/src/versioning/appVersion.mjs';
+
+iosVersionName('0.3.1.4'); // '0.3.1004'
+```
+
+- Every version has its own iOS name, and the names sort as the versions do, because BUILD stays
+  below 1000 (`IOS_BUILD_BOUND`). `iosVersionName` throws for a BUILD of 1000 or more and for
+  anything `parseAppVersion` refuses. It has no fallback name.
+- The four-part name stays the app's one version. The app config holds it once, as `version`, and the
+  bump script is unchanged. An app derives the iOS name where its config is built: in Expo, a dynamic
+  config (`app.config.js`) sets `ios.version` to `iosVersionName(config.version)`. `ios.version`
+  takes precedence over `version` on iOS only, so Android keeps the four segments.
+- The iOS build number (`CFBundleVersion`) is still EAS's counter, as on Android.

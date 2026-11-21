@@ -81,7 +81,8 @@ with no runtime surface records why, and is still reviewed.
 - Apps: the version name is `MAJOR.EPIC.STORY.BUILD`, bumped in the commit that makes the change —
   a fix bumps BUILD; a finished story bumps STORY and resets BUILD to 1; a finished epic bumps
   EPIC and resets STORY to 0 and BUILD to 1. EPIC counts finished epics; it is not the epic's
-  number in the plan. Only the owner raises MAJOR. iOS accepts at most three segments, so an iOS
-  store build uses the first three. Fix, story and epic bumps go through the app's bump script,
+  number in the plan. Only the owner raises MAJOR. iOS accepts at most three integers, so an iOS
+  build is named `MAJOR.EPIC.(STORY × 1000 + BUILD)` by the helper's `iosVersionName`
+  (`0.3.1.4` is `0.3.1004` on iOS). Fix, story and epic bumps go through the app's bump script,
   which uses the kit helper (`src/versioning/appVersion.mjs`). The full policy is in
   `src/versioning/README.md`.

@@ -2,8 +2,9 @@
 // behind it is in README.md next to this file. Plain ESM with JSDoc types, so an app's Node scripts can
 // import it straight from node_modules.
 //
-//   import { bumpAppVersion } from '@vuco/kit/src/versioning/appVersion.mjs';
+//   import { bumpAppVersion, iosVersionName } from '@vuco/kit/src/versioning/appVersion.mjs';
 //   bumpAppVersion('0.1.10.2', 'epic'); // '0.2.0.1'
+//   iosVersionName('0.3.1.4'); // '0.3.1004'
 //
 // Every function throws on input it does not recognise and names that input. None of them falls back
 // to a default.
@@ -78,4 +79,34 @@ export function bumpAppVersion(text, kind) {
         `unknown bump kind ${JSON.stringify(kind)}: expected ${BUMP_KINDS.join(", ")} (MAJOR moves only by the owner's hand)`,
       );
   }
+}
+
+/** An iOS version name has room for a BUILD below this bound: STORY and BUILD share its third number. */
+export const IOS_BUILD_BOUND = 1000;
+
+/**
+ * The iOS version name (`CFBundleShortVersionString`) of an app version. iOS accepts at most three
+ * integers, so STORY and BUILD share the third: MAJOR.EPIC.(STORY × 1000 + BUILD).
+ *   iosVersionName('0.3.1.4'); // '0.3.1004'
+ *   iosVersionName('0.4.0.1'); // '0.4.1'
+ * Two valid versions keep their order, and every bump gives a new name, because BUILD stays below
+ * the bound. A BUILD at or above it throws: there is no fallback name.
+ * @param {unknown} text  the app version name, e.g. '0.3.1.4'
+ * @returns {string}
+ */
+export function iosVersionName(text) {
+  const { major, epic, story, build } = parseAppVersion(text);
+  if (build >= IOS_BUILD_BOUND) {
+    throw new Error(
+      `no iOS version name for ${JSON.stringify(text)}: BUILD ${build} is not below ${IOS_BUILD_BOUND}`,
+    );
+  }
+  const third = story * IOS_BUILD_BOUND + build;
+  // Beyond Number.MAX_SAFE_INTEGER the shared number can no longer be counted exactly.
+  if (!Number.isSafeInteger(third)) {
+    throw new Error(
+      `no iOS version name for ${JSON.stringify(text)}: STORY ${story} is too large to share a number with BUILD`,
+    );
+  }
+  return `${major}.${epic}.${third}`;
 }
