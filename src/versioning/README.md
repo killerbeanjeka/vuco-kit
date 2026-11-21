@@ -72,11 +72,21 @@ import { iosVersionName } from '@vuco/kit/src/versioning/appVersion.mjs';
 iosVersionName('0.3.1.4'); // '0.3.1004'
 ```
 
+To read an iOS name back: STORY is the third number divided by 1000 and rounded down, and BUILD is
+the remainder. `0.3.1004` is story 1, build 4; `0.4.1` is story 0, build 1.
+
 - Every version has its own iOS name, and the names sort as the versions do, because BUILD stays
   below 1000 (`IOS_BUILD_BOUND`). `iosVersionName` throws for a BUILD of 1000 or more and for
   anything `parseAppVersion` refuses. It has no fallback name.
+- `bumpAppVersion` does not know the bound: a `fix` bump of BUILD 999 returns BUILD 1000, which has
+  no iOS name. What an app does then is its owner's call; a story or epic bump resets BUILD.
 - The four-part name stays the app's one version. The app config holds it once, as `version`, and the
   bump script is unchanged. An app derives the iOS name where its config is built: in Expo, a dynamic
-  config (`app.config.js`) sets `ios.version` to `iosVersionName(config.version)`. `ios.version`
-  takes precedence over `version` on iOS only, so Android keeps the four segments.
+  config (`app.config.js`) sets `ios.version` to `iosVersionName(config.version)`. Prebuild writes
+  `ios.version` into the iOS Info.plist in place of `version`, so Android keeps the four segments.
+  EAS itself reads `version` only: its build page shows the four-part name for an iOS build too, and
+  EAS CLI warns about it on every iOS build.
+- Expo's `app.config.js` is CommonJS, so it loads the helper with `require()`:
+  `const { iosVersionName } = require('@vuco/kit/src/versioning/appVersion.mjs');`. Node can
+  `require()` an ESM file from 22.12 on; an older Node stops with `ERR_REQUIRE_ESM`.
 - The iOS build number (`CFBundleVersion`) is still EAS's counter, as on Android.

@@ -28,7 +28,7 @@ Releases are the repository's `vX.Y.Z` tags; [CHANGELOG.md](CHANGELOG.md) says w
 | `src/fonts/fontRoleVars.ts` | `FONT_ROLE_VARS.latin` and `.cyrillic`: the faces behind the text roles' CSS variables, which an app sets with NativeWind's `vars()` to switch the text roles per App Language. |
 | `src/i18n/` | `createI18n({ resources, fallbackLng })` and `deviceBestMatchLanguage(supported?)`, with plural rules for every language below; `en.json`, `de.json`, `es.json`, `pl.json`, `ro.json`, `tr.json` and `uk.json` hold the kit's own words (the `kit` namespace: ScreenHeader's back and close labels and Sheet's backdrop label). |
 | `src/packs/` | Pack tooling: `validatePacks.mjs` (schema and language-coverage validator), `countryLiteralLint.mjs` (the country-literal lint CLI), `packCopy.ts` (the drift check for a checked-in copy of pack data). No schema, no data. |
-| `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version. The policy: [src/versioning/README.md](src/versioning/README.md). |
+| `src/versioning/` | `appVersion.mjs`: parse and bump the `MAJOR.EPIC.STORY.BUILD` app version, and derive its iOS version name. The policy: [src/versioning/README.md](src/versioning/README.md). |
 | `src/vuco-file/` | The `.vuco` hand-over bundle, format 1.1: manifest types, the limits, a validator, a synthetic 1.0 fixture and sample 1.1 snag lists. The format, and how to read a bundle safely: [src/vuco-file/README.md](src/vuco-file/README.md). |
 | `config/eslint.base.js` | The ESLint flat config apps extend: Expo's, with `dist/*` ignored. |
 | `config/tsconfig.base.json` | The TypeScript base apps extend: `expo/tsconfig.base`, `strict`, Jest types. |
@@ -235,7 +235,9 @@ Everything else in a pack, and its schema, belongs to the app.
 The version name is `MAJOR.EPIC.STORY.BUILD`; EPIC counts the epics finished since the app adopted the
 scheme, not an epic's number in the plan, and BUILD is at least 1.
 `bumpAppVersion(current, 'fix' | 'story' | 'epic')` returns the next name and throws on anything else;
-MAJOR moves only by hand. Rules, EAS build numbers and the iOS limit:
+MAJOR moves only by hand. `iosVersionName(current)` returns the name an iOS build carries,
+`MAJOR.EPIC.(STORY × 1000 + BUILD)`: iOS accepts three integers, so `0.3.1.4` is `0.3.1004` there. It
+throws for a BUILD of 1000 or more (`IOS_BUILD_BOUND`). Rules, EAS build numbers and the iOS name:
 [src/versioning/README.md](src/versioning/README.md).
 
 ### The `.vuco` hand-over bundle (`src/vuco-file/`)

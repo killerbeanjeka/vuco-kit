@@ -1,5 +1,6 @@
 // The version rows of the Story 15.3 I/O matrix: the three bumps, and every input the helper refuses.
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 
 import {
@@ -129,4 +130,11 @@ test("iOS version names keep the order of the app versions, and no two versions 
   }
   // Three integers without leading zeros: what iOS accepts.
   for (const name of names) assert.match(name, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
+});
+
+// An Expo app config (app.config.js) is CommonJS: it reaches the helper with require(), not import.
+test("the helper loads with require(), as an app's CommonJS config loads it", () => {
+  const helper = createRequire(import.meta.url)("../../src/versioning/appVersion.mjs");
+  assert.equal(helper.iosVersionName("0.3.1.4"), "0.3.1004");
+  assert.equal(helper.iosVersionName, iosVersionName); // the same module instance as the import
 });

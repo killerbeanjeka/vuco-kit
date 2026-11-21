@@ -19,6 +19,10 @@ Upgrading an app:
 - An app that builds for iOS sets `ios.version` to `iosVersionName(config.version)` in a dynamic app
   config (`app.config.js`). Its app config keeps the one four-part `version`, and its bump script
   stays as it is.
+- `app.config.js` is CommonJS and loads the helper with `require()`, which needs Node 22.12 or newer.
+- EAS reads `version` only: its build page shows the four-part name for an iOS build too, and EAS CLI
+  warns about it on every iOS build. The derived name is in the built app's Info.plist.
+- A `fix` bump of BUILD 999 still returns BUILD 1000, which has no iOS name.
 
 ## 0.12.0 — 2026-10-25
 
